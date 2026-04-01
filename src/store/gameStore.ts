@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Card, Pile, PileType } from '../types';
+import type { Pile } from '../types';
 import { createDeck, shuffleDeck } from '../utils/gameLogic';
 
 interface GameState {
