@@ -59,24 +59,38 @@ const GameBoard: React.FC = () => {
                         />
                     ) : (
                         // Render Foundations/Stock/Waste normally (Flat)
-                        pile.cards.map((card, index) => (
-                            <div
-                                key={card.id}
-                                style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    zIndex: index
-                                }}
-                            >
-                                <Card
-                                    card={card}
-                                    pileId={pile.id}
-                                    onDragStart={startDrag}
-                                    onDragEnd={handleDrop}
-                                />
-                            </div>
-                        ))
+                        pile.cards.map((card, index) => {
+                            const isWaste = pile.type === 'waste';
+                            const isTopCard = index === pile.cards.length - 1;
+                            
+                            let leftOffset = 0;
+                            if (isWaste) {
+                                // Fan out the top 3 visible cards
+                                const top3StartIndex = Math.max(0, pile.cards.length - 3);
+                                if (index >= top3StartIndex) {
+                                    leftOffset = (index - top3StartIndex) * 30; // 30px horizontal offset
+                                }
+                            }
+
+                            return (
+                                <div
+                                    key={card.id}
+                                    style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: leftOffset,
+                                        zIndex: index
+                                    }}
+                                >
+                                    <Card
+                                        card={card}
+                                        pileId={pile.id}
+                                        onDragStart={(isWaste && !isTopCard) ? undefined : startDrag}
+                                        onDragEnd={handleDrop}
+                                    />
+                                </div>
+                            );
+                        })
                     )}
                 </div>
             ))}

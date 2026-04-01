@@ -1,0 +1,33 @@
+.rotate-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #1a472a;
+  z-index: 9999;
+  color: white;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 20px;
+  font-family: sans-serif;
+}
+
+.rotate-overlay svg {
+  animation: rotatePhone 2s infinite ease-in-out;
+}
+
+@keyframes rotatePhone {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(-90deg); }
+  100% { transform: rotate(-90deg); }
+}
+
+@media screen and (max-width: 900px) and (orientation: portrait) {
+  .rotate-overlay {
+    display: flex;
+  }
+}
