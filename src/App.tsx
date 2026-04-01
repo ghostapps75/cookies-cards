@@ -23,24 +23,15 @@ function App() {
 
   return (
     <>
-      <div className="rotate-overlay">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-          <line x1="12" y1="18" x2="12.01" y2="18"></line>
-        </svg>
-        <h2 style={{marginTop: '20px', marginBottom: '10px'}}>Please Rotate Device</h2>
-        <p>This game is best played in landscape mode.</p>
-      </div>
-
       {showIntro ? (
-        <div style={{ position: 'relative', width: '100vw', height: '100vh', backgroundColor: 'black' }}>
+        <div style={{ position: 'relative', width: '100vw', height: '100vh', backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <video
             src={introVideo}
             autoPlay
             muted
             playsInline
             onEnded={() => setShowIntro(false)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />
           <button
             onClick={() => setShowIntro(false)}
@@ -72,9 +63,19 @@ function App() {
           </button>
         </div>
       ) : (
-        <div className="App">
-          <GameBoard />
-        </div>
+        <>
+          <div className="rotate-overlay">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+              <line x1="12" y1="18" x2="12.01" y2="18"></line>
+            </svg>
+            <h2 style={{marginTop: '20px', marginBottom: '10px'}}>Please Rotate Device</h2>
+            <p>This game is best played in landscape mode.</p>
+          </div>
+          <div className="App">
+            <GameBoard />
+          </div>
+        </>
       )}
     </>
   );
