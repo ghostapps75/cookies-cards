@@ -39,8 +39,16 @@ interface DragState {
 }
 
 const GameBoard: React.FC = () => {
-    const state = useGameStore();
-    const { stock, waste, foundations, tableau, drawCount, status, gameId, hint } = state;
+    // Subscribed slice by slice on purpose. Taking the whole store would re-render
+    // all 52 cards every time the clock ticks, which drops frames once a second.
+    const stock = useGameStore(s => s.stock);
+    const waste = useGameStore(s => s.waste);
+    const foundations = useGameStore(s => s.foundations);
+    const tableau = useGameStore(s => s.tableau);
+    const drawCount = useGameStore(s => s.drawCount);
+    const status = useGameStore(s => s.status);
+    const gameId = useGameStore(s => s.gameId);
+    const hint = useGameStore(s => s.hint);
 
     const wrapRef = useRef<HTMLDivElement>(null);
     const boardRef = useRef<HTMLDivElement>(null);
@@ -511,7 +519,8 @@ const GameBoard: React.FC = () => {
                                 hinted={hintedIds.has(id)}
                                 interactive={interactive}
                                 topOfPile={isTop}
-                                onPointerDown={event => handleCardPointerDown(event, entry.card, pile)}
+                                pileId={pile}
+                                onPointerDown={handleCardPointerDown}
                             />
                         );
                     })}

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import GameBoard from './components/GameBoard';
 import { createDeck } from './utils/gameLogic';
 import { preloadCardImages } from './utils/assets';
-import { unlockAudio } from './utils/sound';
+import { unlockAudio, warmUpAudio } from './utils/sound';
 import introVideo from './assets/intro.mp4';
 import './App.css';
 
@@ -30,6 +30,7 @@ function App() {
 
     useEffect(() => {
         preloadCardImages(createDeck());
+        warmUpAudio();
     }, []);
 
     useEffect(() => {

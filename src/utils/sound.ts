@@ -48,6 +48,20 @@ const getCtx = (): Ctx | null => {
     return ctx;
 };
 
+/**
+ * Build the audio graph up front. Constructing an AudioContext and filling the
+ * noise buffer costs tens of milliseconds, and paying that on the first click
+ * drops frames right as the first cards are being turned over.
+ */
+export const warmUpAudio = (): void => {
+    try {
+        const c = getCtx();
+        if (c) noiseBuffer(c);
+    } catch {
+        /* an autoplay policy said no; the first gesture will build it instead */
+    }
+};
+
 /** Browsers keep audio suspended until a real gesture, so call this from one. */
 export const unlockAudio = async (): Promise<void> => {
     const c = getCtx();

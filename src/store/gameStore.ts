@@ -113,11 +113,17 @@ const deal = (): Board => {
     return board;
 };
 
+/**
+ * Only the piles are copied, not the cards in them. Once a card is in the store
+ * it is never mutated in place - every change spreads a new object - so sharing
+ * them keeps identity stable for the fifty-odd cards a move does not touch,
+ * which is what lets React skip re-rendering them.
+ */
 const cloneBoard = (b: Board): Board => ({
-    stock: b.stock.map(c => ({ ...c })),
-    waste: b.waste.map(c => ({ ...c })),
-    foundations: b.foundations.map(p => p.map(c => ({ ...c }))),
-    tableau: b.tableau.map(p => p.map(c => ({ ...c }))),
+    stock: [...b.stock],
+    waste: [...b.waste],
+    foundations: b.foundations.map(p => [...p]),
+    tableau: b.tableau.map(p => [...p]),
 });
 
 const pileIndex = (id: PileId): number => Number(id.slice(id.indexOf('-') + 1));

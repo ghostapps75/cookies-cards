@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import type { Card as CardType } from '../types';
+import type { Card as CardType, PileId } from '../types';
 import { getCardBackUrl, getCardImageUrl } from '../utils/assets';
 import { CARD_H, CARD_RADIUS, CARD_W } from '../utils/layout';
 
 interface CardProps {
     card: CardType;
+    pileId: PileId;
     x: number;
     y: number;
     z: number;
@@ -17,7 +18,8 @@ interface CardProps {
     /** Only the card on top of a pile lifts under the cursor; a card in the
      *  middle of a fan must stay tucked under the ones covering it. */
     topOfPile?: boolean;
-    onPointerDown?: (event: React.PointerEvent) => void;
+    /** Stable across renders: the card hands its own identity back up. */
+    onPointerDown?: (event: React.PointerEvent, card: CardType, pileId: PileId) => void;
 }
 
 const faceStyle: React.CSSProperties = {
@@ -44,6 +46,7 @@ const HINT_SHADOW = '0 0 0 3px rgba(255,214,102,0.95), 0 0 26px 6px rgba(255,196
 
 const CardView: React.FC<CardProps> = ({
     card,
+    pileId,
     x,
     y,
     z,
@@ -78,7 +81,7 @@ const CardView: React.FC<CardProps> = ({
             }
             onAnimationStart={() => setFlying(true)}
             onAnimationComplete={() => setFlying(false)}
-            onPointerDown={onPointerDown}
+            onPointerDown={onPointerDown && (event => onPointerDown(event, card, pileId))}
             onPointerEnter={() => interactive && setHovered(true)}
             onPointerLeave={() => setHovered(false)}
             style={{
