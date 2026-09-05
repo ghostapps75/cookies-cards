@@ -75,9 +75,14 @@ const GameBoard: React.FC = () => {
         fit();
         const observer = new ResizeObserver(fit);
         observer.observe(el);
+        // Belt and braces: a ResizeObserver only delivers on a rendered frame,
+        // so a window resized while the tab was in the background can leave the
+        // table laid out for the old size until something else redraws it.
+        window.addEventListener('resize', fit);
         window.addEventListener('orientationchange', fit);
         return () => {
             observer.disconnect();
+            window.removeEventListener('resize', fit);
             window.removeEventListener('orientationchange', fit);
         };
     }, []);

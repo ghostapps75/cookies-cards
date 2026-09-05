@@ -28,11 +28,21 @@ const MIN_FAN_DOWN = 6;
 const MIN_FAN_UP = 20;
 
 /**
- * Cards stop growing at this scale. A big monitor should get a bigger table,
- * not bigger cards: past roughly this size they stop reading as playing cards
- * and start reading as posters. Raise it if you want a chunkier deck.
+ * Cards stop growing at this scale, which puts them at 116x169 css pixels -
+ * about what every other solitaire uses on a desktop.
+ *
+ * This is an absolute cap rather than a share of the screen on purpose. The
+ * board gets shallower on letterbox screens so that a phone held sideways can
+ * have big cards, but a laptop browser window is also wide and short once the
+ * tabs and address bar have taken their cut, and there the same rule made the
+ * cards a third of the play area and pushed long columns off the bottom. Size
+ * in pixels is what separates the two cases; aspect ratio cannot.
+ *
+ * Small screens never reach the cap, so they are unaffected. Above it the extra
+ * room becomes table: wider margins, and a deeper tableau, which is what keeps
+ * a full thirteen-card column on screen.
  */
-const MAX_SCALE = 1.1;
+const MAX_SCALE = 0.88;
 
 const clamp = (min: number, value: number, max: number): number =>
     Math.max(min, Math.min(max, value));
