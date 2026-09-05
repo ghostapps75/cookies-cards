@@ -34,7 +34,7 @@ export interface Metrics {
     boardW: number;
     boardH: number;
     tableauRoom: number;
-    wasteFan: number;
+    wasteStep: number;
     origins: Record<PileId, { x: number; y: number }>;
 }
 
@@ -61,7 +61,7 @@ export const metricsFor = (containerW: number, containerH: number): Metrics => {
         boardW,
         boardH,
         tableauRoom: boardH - TABLEAU_Y - BOTTOM_PAD,
-        wasteFan: Math.round(Math.min(38, gap + 8)),
+        wasteStep: Math.round(Math.min(38, gap + 8)),
         origins,
     };
 };
@@ -100,7 +100,8 @@ export interface BoardState {
     waste: Card[];
     foundations: Card[][];
     tableau: Card[][];
-    drawCount: number;
+    /** How many cards on top of the waste are fanned out. */
+    wasteFan: number;
 }
 
 /** Where every card on the table belongs right now. */
@@ -121,12 +122,12 @@ export const computePlacements = (
         });
     });
 
-    // Only the last few waste cards fan out; the rest hide underneath.
-    const fanStart = Math.max(0, board.waste.length - board.drawCount);
+    // The cards turned over this go fan out; everything under them is squared
+    // up in a single pile, exactly where it would sit on a real table.
+    const fanStart = board.waste.length - Math.min(board.wasteFan, board.waste.length);
     board.waste.forEach((card, i) => {
-        const step = Math.max(0, Math.min(i - fanStart, board.drawCount - 1));
         map.set(card.id, {
-            x: origins.waste.x + (i >= fanStart ? step * metrics.wasteFan : 0),
+            x: origins.waste.x + (i >= fanStart ? (i - fanStart) * metrics.wasteStep : 0),
             y: origins.waste.y,
             z: i,
             pileId: 'waste',

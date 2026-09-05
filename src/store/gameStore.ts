@@ -27,6 +27,7 @@ interface Snapshot extends Board {
     score: number;
     moves: number;
     recycles: number;
+    wasteFan: number;
 }
 
 export interface Hint {
@@ -54,6 +55,12 @@ interface GameState extends Board {
     seconds: number;
     recycles: number;
     drawCount: DrawCount;
+    /**
+     * How many cards on top of the waste came from the most recent turn, and so
+     * are the ones fanned out. Tracked rather than assumed to be the last three:
+     * playing a card off the waste must not make a buried one pop back into view.
+     */
+    wasteFan: number;
     history: Snapshot[];
     hint: Hint | null;
     started: boolean;
@@ -165,6 +172,7 @@ interface SavedGame extends Board {
     seconds: number;
     recycles: number;
     drawCount: DrawCount;
+    wasteFan: number;
     started: boolean;
     /** Enough of the past that Undo still works after closing the tab. */
     history?: Snapshot[];
@@ -192,6 +200,7 @@ const persist = (s: GameState): void => {
         seconds: s.seconds,
         recycles: s.recycles,
         drawCount: s.drawCount,
+        wasteFan: s.wasteFan,
         started: s.started,
         history: s.history.slice(-SAVED_HISTORY),
     };
@@ -239,6 +248,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     seconds: restored?.seconds ?? 0,
     recycles: restored?.recycles ?? 0,
     drawCount: restored?.drawCount ?? 3,
+    wasteFan: restored?.wasteFan ?? 0,
     history: restored?.history ?? [],
     hint: null,
     started: restored?.started ?? false,
@@ -258,6 +268,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             seconds: 0,
             recycles: 0,
             drawCount: drawCount ?? s.drawCount,
+            wasteFan: 0,
             history: [],
             hint: null,
             started: false,
@@ -301,6 +312,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                 history: pushHistory(s.history, snapshot),
                 score: Math.max(0, s.score - (s.recycles > 0 ? penalty : 0)),
                 recycles: s.recycles + 1,
+                wasteFan: 0,
                 moves: s.moves + 1,
                 hint: null,
                 started: true,
@@ -314,6 +326,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                 ...board,
                 history: pushHistory(s.history, snapshot),
                 moves: s.moves + 1,
+                wasteFan: drawn.length,
                 hint: null,
                 started: true,
             });
@@ -335,6 +348,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             score: previous.score,
             moves: previous.moves,
             recycles: previous.recycles,
+            wasteFan: previous.wasteFan,
             history: s.history.slice(0, -1),
             status: 'playing',
             hint: null,
@@ -394,6 +408,9 @@ export const useGameStore = create<GameState>((set, get) => ({
             history: pushHistory(s.history, snapshot),
             score: Math.max(0, s.score + gained),
             moves: s.moves + 1,
+            // The fan shrinks with the batch it belongs to; it never reaches
+            // back down for a card that was already buried.
+            wasteFan: from === 'waste' ? Math.max(0, s.wasteFan - 1) : s.wasteFan,
             hint: null,
             started: true,
             status: won ? 'won' : 'playing',
@@ -494,6 +511,7 @@ const takeSnapshot = (s: GameState): Snapshot => ({
     score: s.score,
     moves: s.moves,
     recycles: s.recycles,
+    wasteFan: s.wasteFan,
 });
 
 const pushHistory = (history: Snapshot[], snapshot: Snapshot): Snapshot[] => {

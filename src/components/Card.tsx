@@ -18,6 +18,8 @@ interface CardProps {
     /** Only the card on top of a pile lifts under the cursor; a card in the
      *  middle of a fan must stay tucked under the ones covering it. */
     topOfPile?: boolean;
+    /** Place without animating: for cards moving to somewhere already hidden. */
+    instant?: boolean;
     /** Stable across renders: the card hands its own identity back up. */
     onPointerDown?: (event: React.PointerEvent, card: CardType, pileId: PileId) => void;
 }
@@ -55,6 +57,7 @@ const CardView: React.FC<CardProps> = ({
     hinted = false,
     interactive = false,
     topOfPile = false,
+    instant = false,
     onPointerDown,
 }) => {
     const [hovered, setHovered] = useState(false);
@@ -75,7 +78,7 @@ const CardView: React.FC<CardProps> = ({
                 rotate: dragging ? -2.5 : 0,
             }}
             transition={
-                dragging
+                dragging || instant
                     ? { duration: 0 }
                     : { type: 'spring', stiffness: 520, damping: 38, mass: 0.7 }
             }

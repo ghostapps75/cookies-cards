@@ -45,7 +45,7 @@ const GameBoard: React.FC = () => {
     const waste = useGameStore(s => s.waste);
     const foundations = useGameStore(s => s.foundations);
     const tableau = useGameStore(s => s.tableau);
-    const drawCount = useGameStore(s => s.drawCount);
+    const wasteFan = useGameStore(s => s.wasteFan);
     const status = useGameStore(s => s.status);
     const gameId = useGameStore(s => s.gameId);
     const hint = useGameStore(s => s.hint);
@@ -85,9 +85,19 @@ const GameBoard: React.FC = () => {
     const scale = Math.min(viewport.w / metrics.boardW, viewport.h / metrics.boardH);
 
     const board = useMemo(
-        () => ({ stock, waste, foundations, tableau, drawCount }),
-        [stock, waste, foundations, tableau, drawCount],
+        () => ({ stock, waste, foundations, tableau, wasteFan }),
+        [stock, waste, foundations, tableau, wasteFan],
     );
+
+    // Cards that have dropped out of the fan belong under the pile. Sliding them
+    // there would drag them straight across the cards being turned over, which
+    // reads as the pile shuffling itself.
+    const squaredUp = useMemo(() => {
+        const ids = new Set<string>();
+        const fanStart = waste.length - Math.min(wasteFan, waste.length);
+        waste.slice(0, fanStart).forEach(card => ids.add(card.id));
+        return ids;
+    }, [waste, wasteFan]);
 
     const placements = useMemo(() => computePlacements(board, metrics), [board, metrics]);
     const zones = useMemo(() => dropZones(board, metrics), [board, metrics]);
@@ -519,6 +529,7 @@ const GameBoard: React.FC = () => {
                                 hinted={hintedIds.has(id)}
                                 interactive={interactive}
                                 topOfPile={isTop}
+                                instant={squaredUp.has(id)}
                                 pileId={pile}
                                 onPointerDown={handleCardPointerDown}
                             />
