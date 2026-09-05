@@ -10,13 +10,18 @@ export interface Card {
 
 export type PileType = 'stock' | 'waste' | 'foundation' | 'tableau';
 
-export interface Pile {
-    id: string;
-    type: PileType;
-    cards: Card[];
+/** e.g. 'stock' | 'waste' | 'foundation-0' | 'tableau-3' */
+export type PileId = string;
+
+/** Where a card should be drawn on the logical board. */
+export interface CardPlacement {
     x: number;
     y: number;
+    z: number;
+    /** Cards in a tableau that sit under others are squeezed; used for hit testing. */
+    pileId: PileId;
 }
 
-// Ensure this file is treated as a module at runtime even if all exports are types
+export type FeltName = 'green' | 'cookie' | 'plum' | 'midnight';
+
 export { };

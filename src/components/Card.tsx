@@ -1,91 +1,131 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import type { Card as CardType } from '../types';
-import { getCardImageUrl, getCardBackUrl } from '../utils/assets';
+import { getCardBackUrl, getCardImageUrl } from '../utils/assets';
+import { CARD_H, CARD_RADIUS, CARD_W } from '../utils/layout';
 
 interface CardProps {
     card: CardType;
-    pileId: string;
-    onDragStart?: (pileId: string, cardId: string) => void;
-    onDragEnd?: (point: { x: number; y: number }) => void;
-    style?: React.CSSProperties;
-    children?: React.ReactNode;
+    x: number;
+    y: number;
+    z: number;
+    /** Where the card flies in from when a new hand is dealt. */
+    from?: { x: number; y: number };
+    dragging?: boolean;
+    hinted?: boolean;
+    interactive?: boolean;
+    /** Only the card on top of a pile lifts under the cursor; a card in the
+     *  middle of a fan must stay tucked under the ones covering it. */
+    topOfPile?: boolean;
+    onPointerDown?: (event: React.PointerEvent) => void;
 }
 
-const Card: React.FC<CardProps> = ({ card, pileId, onDragStart, onDragEnd, style, children }) => {
-    // Local hover state to prevent "Bulging" parents
-    const [isHovered, setIsHovered] = useState(false);
+const faceStyle: React.CSSProperties = {
+    position: 'absolute',
+    inset: 0,
+    borderRadius: CARD_RADIUS,
+    overflow: 'hidden',
+    backfaceVisibility: 'hidden',
+    WebkitBackfaceVisibility: 'hidden',
+    backgroundColor: '#fdfdfb',
+};
+
+const imgStyle: React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+    display: 'block',
+    pointerEvents: 'none',
+    userSelect: 'none',
+};
+
+const RESTING_SHADOW = '0 1px 2px rgba(0,0,0,0.30), 0 5px 12px rgba(0,0,0,0.22)';
+const LIFTED_SHADOW = '0 12px 26px rgba(0,0,0,0.42), 0 28px 52px rgba(0,0,0,0.28)';
+const HINT_SHADOW = '0 0 0 3px rgba(255,214,102,0.95), 0 0 26px 6px rgba(255,196,54,0.75)';
+
+const CardView: React.FC<CardProps> = ({
+    card,
+    x,
+    y,
+    z,
+    from,
+    dragging = false,
+    hinted = false,
+    interactive = false,
+    topOfPile = false,
+    onPointerDown,
+}) => {
+    const [hovered, setHovered] = useState(false);
+
+    // A card in flight has to ride above everything it passes over, then drop
+    // back into its pile's own order once it lands.
+    const [flying, setFlying] = useState(true);
+
+    const raised = interactive && hovered && topOfPile;
 
     return (
         <motion.div
-            layoutId={card.id}
-            // Only allow dragging if face up
-            drag={card.isFaceUp}
-            // 1. FIX MOLASSES: dragElastic={1} means 1:1 movement
-            dragElastic={1}
-            // 2. STOP SLIDING: Stop instantly when released
-            dragMomentum={false}
-            // 3. SNAP BACK: If invalid, snap back to origin
-            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-
-            // Events
-            onDragStart={() => onDragStart?.(pileId, card.id)}
-            onDragEnd={(_, info) => onDragEnd?.(info.point)}
-
-            // HOVER FIX: Stop propagation to prevent parent growth
-            onPointerEnter={(e) => {
-                e.stopPropagation();
-                if (card.isFaceUp) setIsHovered(true);
-            }}
-            onPointerLeave={(e) => {
-                e.stopPropagation();
-                setIsHovered(false);
-            }}
-
-            // Visuals
+            initial={from ? { x: from.x, y: from.y, scale: 0.92 } : false}
             animate={{
-                scale: isHovered ? 1.05 : 1,
-                zIndex: isHovered ? 10 : 1
+                x,
+                y: y - (raised ? 7 : 0),
+                scale: dragging ? 1.06 : 1,
+                rotate: dragging ? -2.5 : 0,
             }}
-            whileDrag={{
-                scale: 1.1,
-                zIndex: 1000,
-                cursor: 'grabbing',
-                boxShadow: "0px 15px 30px rgba(0,0,0,0.3)"
-            }}
-
+            transition={
+                dragging
+                    ? { duration: 0 }
+                    : { type: 'spring', stiffness: 520, damping: 38, mass: 0.7 }
+            }
+            onAnimationStart={() => setFlying(true)}
+            onAnimationComplete={() => setFlying(false)}
+            onPointerDown={onPointerDown}
+            onPointerEnter={() => interactive && setHovered(true)}
+            onPointerLeave={() => setHovered(false)}
             style={{
-                ...style,
-                width: 130,   // UPSCALED FOR CASINO SIZE
-                height: 182,  // UPSCALED FOR CASINO SIZE
-                position: 'relative', // Relative allows children to stack correctly
-                backgroundColor: 'white', // Creates the white card border
-                borderRadius: 8,
-                boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                // PREVENT TEXT SELECTION WHILE DRAGGING
-                userSelect: 'none',
-                // ALLOW CHILDREN TO SHOW (Recursive Stack)
-                overflow: 'visible',
-                cursor: card.isFaceUp ? (isHovered ? 'grab' : 'pointer') : 'default'
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: CARD_W,
+                height: CARD_H,
+                zIndex: dragging ? 100000 : flying ? 900 + z : z,
+                perspective: 1400,
+                cursor: interactive ? (dragging ? 'grabbing' : 'grab') : 'default',
+                touchAction: 'none',
+                willChange: 'transform',
             }}
         >
-            <img
-                src={card.isFaceUp ? getCardImageUrl(card.rank, card.suit) : getCardBackUrl()}
-                alt={`${card.rank} of ${card.suit}`}
-                draggable={false} // Disable native browser image drag ghost
+            <motion.div
+                animate={{ rotateY: card.isFaceUp ? 0 : 180 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 26 }}
                 style={{
                     width: '100%',
                     height: '100%',
-                    objectFit: 'contain', // Prevents stretching/squishing
-                    padding: '6px',       // Forces white space around the numbers
-                    pointerEvents: 'none', // Let clicks pass through image to the motion.div
-                    display: 'block'
+                    position: 'relative',
+                    transformStyle: 'preserve-3d',
+                    borderRadius: CARD_RADIUS,
+                    boxShadow: hinted ? HINT_SHADOW : dragging || raised ? LIFTED_SHADOW : RESTING_SHADOW,
+                    transition: 'box-shadow 160ms ease',
                 }}
-            />
-            {/* Render the rest of the stack inside this card */}
-            {children}
+            >
+                <div style={faceStyle}>
+                    <img
+                        src={getCardImageUrl(card.rank, card.suit)}
+                        alt={`${card.rank} of ${card.suit}`}
+                        draggable={false}
+                        style={imgStyle}
+                    />
+                </div>
+                <div style={{ ...faceStyle, transform: 'rotateY(180deg)' }}>
+                    <img
+                        src={getCardBackUrl()}
+                        alt=""
+                        draggable={false}
+                        style={{ ...imgStyle, objectFit: 'cover' }}
+                    />
+                </div>
+            </motion.div>
         </motion.div>
     );
 };
 
-export default Card;
+export default React.memo(CardView);
