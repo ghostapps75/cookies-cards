@@ -70,6 +70,8 @@ interface GameState extends Board {
     lastMoved: string[];
     history: Snapshot[];
     hint: Hint | null;
+    /** Something to tell the player in words, when a glow will not do. */
+    notice: string | null;
     started: boolean;
     stats: Stats;
 
@@ -86,6 +88,7 @@ interface GameState extends Board {
     autoCompleteStep: () => AutoStep;
     showHint: () => void;
     clearHint: () => void;
+    clearNotice: () => void;
     setDrawCount: (drawCount: DrawCount) => void;
 }
 
@@ -189,96 +192,29 @@ const moveScore = (from: PileId, to: PileId): number => {
     return 0;
 };
 
-// --- persistence -----------------------------------------------------------
-
-interface SavedGame extends Board {
-    gameId: number;
-    score: number;
-    moves: number;
-    seconds: number;
-    recycles: number;
-    drawCount: DrawCount;
-    wasteFan: number;
-    started: boolean;
-    /** Enough of the past that Undo still works after closing the tab. */
-    history?: Snapshot[];
+// A closed page ends the hand. Settings and the win record are kept (further
+// down), but the game itself is not: reopening the site deals something new.
+try {
+    localStorage.removeItem(SAVE_KEY);
+} catch {
+    /* ignore */
 }
 
-const SAVED_HISTORY = 25;
-
-const persist = (s: GameState): void => {
-    if (s.status === 'won') {
-        try {
-            localStorage.removeItem(SAVE_KEY);
-        } catch {
-            /* ignore */
-        }
-        return;
-    }
-    const save: SavedGame = {
-        stock: s.stock,
-        waste: s.waste,
-        foundations: s.foundations,
-        tableau: s.tableau,
-        gameId: s.gameId,
-        score: s.score,
-        moves: s.moves,
-        seconds: s.seconds,
-        recycles: s.recycles,
-        drawCount: s.drawCount,
-        wasteFan: s.wasteFan,
-        started: s.started,
-        history: s.history.slice(-SAVED_HISTORY),
-    };
-    try {
-        localStorage.setItem(SAVE_KEY, JSON.stringify(save));
-    } catch {
-        /* ignore */
-    }
-};
-
-const loadSave = (): SavedGame | null => {
-    try {
-        const raw = localStorage.getItem(SAVE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw) as SavedGame;
-        if (!parsed.tableau || parsed.tableau.length !== 7 || !parsed.foundations) return null;
-        const total =
-            parsed.stock.length +
-            parsed.waste.length +
-            parsed.foundations.reduce((n, p) => n + p.length, 0) +
-            parsed.tableau.reduce((n, p) => n + p.length, 0);
-        if (total !== 52) return null;
-        return parsed;
-    } catch {
-        return null;
-    }
-};
-
-const restored = loadSave();
-const initialBoard: Board = restored
-    ? {
-          stock: restored.stock,
-          waste: restored.waste,
-          foundations: restored.foundations,
-          tableau: restored.tableau,
-      }
-    : deal();
-
 export const useGameStore = create<GameState>((set, get) => ({
-    ...initialBoard,
-    gameId: restored?.gameId ?? 1,
+    ...deal(),
+    gameId: 1,
     status: 'dealing',
-    score: restored?.score ?? 0,
-    moves: restored?.moves ?? 0,
-    seconds: restored?.seconds ?? 0,
-    recycles: restored?.recycles ?? 0,
-    drawCount: restored?.drawCount ?? 3,
-    wasteFan: restored?.wasteFan ?? 0,
+    score: 0,
+    moves: 0,
+    seconds: 0,
+    recycles: 0,
+    drawCount: 3,
+    wasteFan: 0,
     lastMoved: [],
-    history: restored?.history ?? [],
+    history: [],
     hint: null,
-    started: restored?.started ?? false,
+    notice: null,
+    started: false,
     stats: loadStats(),
 
     newGame: drawCount => {
@@ -298,11 +234,11 @@ export const useGameStore = create<GameState>((set, get) => ({
             wasteFan: 0,
             lastMoved: [],
             history: [],
+            notice: null,
             hint: null,
             started: false,
             stats,
         }));
-        persist(get());
     },
 
     finishDeal: () => {
@@ -361,7 +297,6 @@ export const useGameStore = create<GameState>((set, get) => ({
                 started: true,
             });
         }
-        persist(get());
     },
 
     undo: () => {
@@ -384,7 +319,6 @@ export const useGameStore = create<GameState>((set, get) => ({
             status: 'playing',
             hint: null,
         });
-        persist(get());
     },
 
     moveCards: (from, cardId, to) => {
@@ -449,7 +383,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         });
 
         if (won) recordWin(get(), set);
-        persist(get());
         return true;
     },
 
@@ -490,7 +423,6 @@ export const useGameStore = create<GameState>((set, get) => ({
             hint: null,
             started: true,
         });
-        persist(get());
         return true;
     },
 
@@ -525,13 +457,23 @@ export const useGameStore = create<GameState>((set, get) => ({
         const s = get();
         if (s.status !== 'playing') return;
         const hint = findHint(s);
-        set({ hint });
-        if (hint) sfx.playHint();
-        else sfx.playInvalid();
+        if (hint) {
+            set({ hint, notice: null });
+            sfx.playHint();
+            return;
+        }
+        // Nothing worth doing, and the deck is spent. Say so plainly rather than
+        // pointing at a move that only shuffles the table around.
+        set({ hint: null, notice: 'No moves left that would help. Time for a new hand.' });
+        sfx.playInvalid();
     },
 
     clearHint: () => {
         if (get().hint) set({ hint: null });
+    },
+
+    clearNotice: () => {
+        if (get().notice) set({ notice: null });
     },
 }));
 
@@ -570,9 +512,20 @@ const recordWin = (s: GameState, set: (partial: Partial<GameState>) => void): vo
  * Suggest a move, favouring the ones that actually open the game up:
  * cards going home, then moves that uncover a face-down card or free a column.
  */
+/**
+ * A move earns a hint only if it gets the player somewhere. Anything else is
+ * just rearranging the table, and offering it is worse than offering nothing:
+ * it reads as "here is your way out" when it is not one.
+ *
+ * Productive means: it turns a card face up, it empties a column, it plays to a
+ * foundation, or it brings a card in off the waste. Notably NOT productive is
+ * sliding a whole column into an empty one - the classic "move the king to the
+ * empty spot" suggestion, which only swaps which column is bare.
+ */
 const findHint = (s: GameState): Hint | null => {
     const wasteTop = topOf(s.waste);
 
+    // Home is always progress.
     for (let t = 0; t < 7; t++) {
         const card = topOf(s.tableau[t]);
         if (!card || !card.isFaceUp) continue;
@@ -590,44 +543,43 @@ const findHint = (s: GameState): Hint | null => {
         }
     }
 
-    // Tableau to tableau, but only when it reveals something.
-    for (let from = 0; from < 7; from++) {
-        const pile = s.tableau[from];
-        const firstUp = pile.findIndex(c => c.isFaceUp);
-        if (firstUp === -1) continue;
-        const run = pile.slice(firstUp);
-        if (!isMovableRun(run)) continue;
-        const uncovers = firstUp > 0;
-        if (!uncovers) continue; // moving a whole column onto another achieves nothing
+    // Tableau to tableau, best first: turning a card over beats freeing a column.
+    const tableauMove = (wanted: 'uncovers' | 'empties'): Hint | null => {
+        for (let from = 0; from < 7; from++) {
+            const pile = s.tableau[from];
+            const firstUp = pile.findIndex(c => c.isFaceUp);
+            if (firstUp === -1) continue;
 
-        for (let to = 0; to < 7; to++) {
-            if (to === from) continue;
-            if (canStackOnTableau(run[0], topOf(s.tableau[to]))) {
-                return { cardIds: run.map(c => c.id), toPileId: `tableau-${to}` };
+            const run = pile.slice(firstUp);
+            if (!isMovableRun(run)) continue;
+
+            const uncovers = firstUp > 0;
+            if (wanted === 'uncovers' ? !uncovers : uncovers) continue;
+
+            for (let to = 0; to < 7; to++) {
+                if (to === from) continue;
+                const target = s.tableau[to];
+                // Emptying one column by filling another empty one is a no-op.
+                if (!uncovers && target.length === 0) continue;
+                if (canStackOnTableau(run[0], topOf(target))) {
+                    return { cardIds: run.map(c => c.id), toPileId: `tableau-${to}` };
+                }
             }
         }
-    }
+        return null;
+    };
 
+    const uncovering = tableauMove('uncovers');
+    if (uncovering) return uncovering;
+
+    const freeing = tableauMove('empties');
+    if (freeing) return freeing;
+
+    // Getting a card off the waste is progress in its own right.
     if (wasteTop) {
         for (let to = 0; to < 7; to++) {
             if (canStackOnTableau(wasteTop, topOf(s.tableau[to]))) {
                 return { cardIds: [wasteTop.id], toPileId: `tableau-${to}` };
-            }
-        }
-    }
-
-    // Partial runs off a face-up stack (splitting a sequence) as a last resort.
-    for (let from = 0; from < 7; from++) {
-        const pile = s.tableau[from];
-        for (let i = 0; i < pile.length; i++) {
-            if (!pile[i].isFaceUp) continue;
-            const run = pile.slice(i);
-            if (!isMovableRun(run)) continue;
-            for (let to = 0; to < 7; to++) {
-                if (to === from) continue;
-                if (canStackOnTableau(run[0], topOf(s.tableau[to]))) {
-                    return { cardIds: run.map(c => c.id), toPileId: `tableau-${to}` };
-                }
             }
         }
     }

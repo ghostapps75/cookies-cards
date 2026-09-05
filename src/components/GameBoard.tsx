@@ -47,6 +47,7 @@ const GameBoard: React.FC = () => {
     const tableau = useGameStore(s => s.tableau);
     const wasteFan = useGameStore(s => s.wasteFan);
     const lastMoved = useGameStore(s => s.lastMoved);
+    const notice = useGameStore(s => s.notice);
     const status = useGameStore(s => s.status);
     const gameId = useGameStore(s => s.gameId);
     const hint = useGameStore(s => s.hint);
@@ -159,6 +160,13 @@ const GameBoard: React.FC = () => {
         }, 42);
         return () => window.clearInterval(id);
     }, [dealOrder]);
+
+    // A notice says its piece and then gets out of the way.
+    useEffect(() => {
+        if (!notice) return;
+        const timer = window.setTimeout(() => useGameStore.getState().clearNotice(), 4200);
+        return () => window.clearTimeout(timer);
+    }, [notice]);
 
     // --- clock ---------------------------------------------------------------
     useEffect(() => {
@@ -545,6 +553,8 @@ const GameBoard: React.FC = () => {
                     })}
                 </div>
             </div>
+
+            {notice && <div className="table-notice">{notice}</div>}
 
             <WinScreen />
         </div>

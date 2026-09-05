@@ -321,6 +321,39 @@
     gap: 10px;
 }
 
+/* ------------------------------------------------------------------ notice */
+
+.table-notice {
+    position: absolute;
+    left: 50%;
+    bottom: 26px;
+    z-index: 95;
+    transform: translateX(-50%);
+    max-width: calc(100vw - 40px);
+    padding: 13px 22px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fdf6e6;
+    text-align: center;
+    background: rgba(12, 26, 18, 0.92);
+    border: 1px solid rgba(255, 217, 119, 0.35);
+    border-radius: 14px;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+    animation: noticeIn 220ms ease-out;
+    pointer-events: none;
+}
+
+@keyframes noticeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 10px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
 /* -------------------------------------------------------------- win screen */
 
 .win-canvas {
