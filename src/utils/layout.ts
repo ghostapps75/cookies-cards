@@ -27,6 +27,13 @@ const MIN_FAN_DOWN = 6;
 // Never squeeze a face-up card below the height of its rank corner.
 const MIN_FAN_UP = 20;
 
+/**
+ * Cards stop growing at this scale. A big monitor should get a bigger table,
+ * not bigger cards: past roughly this size they stop reading as playing cards
+ * and start reading as posters. Raise it if you want a chunkier deck.
+ */
+const MAX_SCALE = 1.1;
+
 const clamp = (min: number, value: number, max: number): number =>
     Math.max(min, Math.min(max, value));
 
@@ -42,8 +49,18 @@ export const metricsFor = (containerW: number, containerH: number): Metrics => {
     const aspect = containerW > 0 && containerH > 0 ? containerW / containerH : 16 / 9;
 
     // Deep table on squarish screens, shallow one on letterbox screens.
-    const boardH = Math.round(clamp(590, 760 - (aspect - 1.5) * 243, 760));
-    const boardW = Math.round(clamp(1160, aspect * boardH, 1760));
+    let boardH = clamp(590, 760 - (aspect - 1.5) * 243, 760);
+    let boardW = clamp(1160, aspect * boardH, 1760);
+
+    // Past the cap, spend the extra room on table rather than on card size:
+    // wider margins, and a deeper tableau so long columns stop compressing.
+    if (containerW > 0 && containerH > 0
+        && Math.min(containerW / boardW, containerH / boardH) > MAX_SCALE) {
+        boardW = containerW / MAX_SCALE;
+        boardH = containerH / MAX_SCALE;
+    }
+    boardW = Math.round(boardW);
+    boardH = Math.round(boardH);
 
     const gap = clamp(MIN_GAP, (boardW - 2 * MIN_MARGIN - 7 * CARD_W) / 6, MAX_GAP);
     const colStep = CARD_W + gap;
