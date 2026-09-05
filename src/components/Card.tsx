@@ -20,6 +20,8 @@ interface CardProps {
     topOfPile?: boolean;
     /** Place without animating: for cards moving to somewhere already hidden. */
     instant?: boolean;
+    /** Travelling between piles, so it must ride over everything it passes. */
+    inTransit?: boolean;
     /** Stable across renders: the card hands its own identity back up. */
     onPointerDown?: (event: React.PointerEvent, card: CardType, pileId: PileId) => void;
 }
@@ -58,13 +60,10 @@ const CardView: React.FC<CardProps> = ({
     interactive = false,
     topOfPile = false,
     instant = false,
+    inTransit = false,
     onPointerDown,
 }) => {
     const [hovered, setHovered] = useState(false);
-
-    // A card in flight has to ride above everything it passes over, then drop
-    // back into its pile's own order once it lands.
-    const [flying, setFlying] = useState(true);
 
     const raised = interactive && hovered && topOfPile;
 
@@ -82,8 +81,6 @@ const CardView: React.FC<CardProps> = ({
                     ? { duration: 0 }
                     : { type: 'spring', stiffness: 520, damping: 38, mass: 0.7 }
             }
-            onAnimationStart={() => setFlying(true)}
-            onAnimationComplete={() => setFlying(false)}
             onPointerDown={onPointerDown && (event => onPointerDown(event, card, pileId))}
             onPointerEnter={() => interactive && setHovered(true)}
             onPointerLeave={() => setHovered(false)}
@@ -93,7 +90,7 @@ const CardView: React.FC<CardProps> = ({
                 left: 0,
                 width: CARD_W,
                 height: CARD_H,
-                zIndex: dragging ? 100000 : flying ? 900 + z : z,
+                zIndex: dragging ? 100000 : inTransit ? 900 + z : z,
                 perspective: 1400,
                 cursor: interactive ? (dragging ? 'grabbing' : 'grab') : 'default',
                 touchAction: 'none',

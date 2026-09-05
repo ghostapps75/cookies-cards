@@ -61,6 +61,13 @@ interface GameState extends Board {
      * playing a card off the waste must not make a buried one pop back into view.
      */
     wasteFan: number;
+    /**
+     * The cards that changed pile in the last action, and so are in flight
+     * across the table. Kept here rather than derived from animation callbacks:
+     * a card left mid-flight by an interrupted callback would sit above the
+     * cards covering it until something else moved it.
+     */
+    lastMoved: string[];
     history: Snapshot[];
     hint: Hint | null;
     started: boolean;
@@ -150,6 +157,25 @@ const writePile = (b: Board, id: PileId, cards: Card[]): void => {
 };
 
 const topOf = (cards: Card[]): Card | undefined => cards[cards.length - 1];
+
+const pileOfEachCard = (b: Board): Map<string, PileId> => {
+    const map = new Map<string, PileId>();
+    b.stock.forEach(c => map.set(c.id, 'stock'));
+    b.waste.forEach(c => map.set(c.id, 'waste'));
+    b.foundations.forEach((p, f) => p.forEach(c => map.set(c.id, `foundation-${f}`)));
+    b.tableau.forEach((p, t) => p.forEach(c => map.set(c.id, `tableau-${t}`)));
+    return map;
+};
+
+/** Which cards are travelling from one pile to another. */
+const travellers = (before: Board, after: Board): string[] => {
+    const was = pileOfEachCard(before);
+    const moved: string[] = [];
+    pileOfEachCard(after).forEach((pile, id) => {
+        if (was.get(id) !== pile) moved.push(id);
+    });
+    return moved;
+};
 
 const isWon = (b: Board): boolean => b.foundations.every(p => p.length === 13);
 
@@ -249,6 +275,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     recycles: restored?.recycles ?? 0,
     drawCount: restored?.drawCount ?? 3,
     wasteFan: restored?.wasteFan ?? 0,
+    lastMoved: [],
     history: restored?.history ?? [],
     hint: null,
     started: restored?.started ?? false,
@@ -269,6 +296,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             recycles: 0,
             drawCount: drawCount ?? s.drawCount,
             wasteFan: 0,
+            lastMoved: [],
             history: [],
             hint: null,
             started: false,
@@ -313,6 +341,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                 score: Math.max(0, s.score - (s.recycles > 0 ? penalty : 0)),
                 recycles: s.recycles + 1,
                 wasteFan: 0,
+                lastMoved: travellers(s, board),
                 moves: s.moves + 1,
                 hint: null,
                 started: true,
@@ -327,6 +356,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                 history: pushHistory(s.history, snapshot),
                 moves: s.moves + 1,
                 wasteFan: drawn.length,
+                lastMoved: travellers(s, board),
                 hint: null,
                 started: true,
             });
@@ -349,6 +379,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             moves: previous.moves,
             recycles: previous.recycles,
             wasteFan: previous.wasteFan,
+            lastMoved: travellers(s, previous),
             history: s.history.slice(0, -1),
             status: 'playing',
             hint: null,
@@ -411,6 +442,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             // The fan shrinks with the batch it belongs to; it never reaches
             // back down for a card that was already buried.
             wasteFan: from === 'waste' ? Math.max(0, s.wasteFan - 1) : s.wasteFan,
+            lastMoved: travellers(s, board),
             hint: null,
             started: true,
             status: won ? 'won' : 'playing',
@@ -454,6 +486,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             history: pushHistory(s.history, snapshot),
             score: s.score + 5,
             moves: s.moves + 1,
+            lastMoved: [],
             hint: null,
             started: true,
         });

@@ -46,6 +46,7 @@ const GameBoard: React.FC = () => {
     const foundations = useGameStore(s => s.foundations);
     const tableau = useGameStore(s => s.tableau);
     const wasteFan = useGameStore(s => s.wasteFan);
+    const lastMoved = useGameStore(s => s.lastMoved);
     const status = useGameStore(s => s.status);
     const gameId = useGameStore(s => s.gameId);
     const hint = useGameStore(s => s.hint);
@@ -389,6 +390,7 @@ const GameBoard: React.FC = () => {
         return ids;
     }, [hint, pileCards, stock]);
 
+    const inTransit = useMemo(() => new Set(lastMoved), [lastMoved]);
     const dragIds = useMemo(() => new Set(drag?.cardIds ?? []), [drag]);
     const dropTarget = drag && drag.target && drag.legalTargets.has(drag.target) ? drag.target : null;
 
@@ -530,6 +532,7 @@ const GameBoard: React.FC = () => {
                                 interactive={interactive}
                                 topOfPile={isTop}
                                 instant={squaredUp.has(id)}
+                                inTransit={inTransit.has(id)}
                                 pileId={pile}
                                 onPointerDown={handleCardPointerDown}
                             />
