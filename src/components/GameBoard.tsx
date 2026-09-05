@@ -22,6 +22,10 @@ const TOUCH_DRAG_THRESHOLD = 9;
 /** Fingers wobble. A short, small movement still counts as a tap. */
 const TAP_SLOP = 14;
 const TAP_MS = 500;
+/** Sending a card home takes two taps, the way Windows Solitaire has always
+ *  done it. Generous windows, because this is not a reflex test. */
+const DOUBLE_TAP_MS = 550;
+const DOUBLE_TAP_SLOP = 32;
 
 interface DragState {
     pileId: PileId;
@@ -43,6 +47,7 @@ const GameBoard: React.FC = () => {
     const [viewport, setViewport] = useState({ w: 1280, h: 720 });
     const [drag, setDrag] = useState<DragState | null>(null);
     const [autoRunning, setAutoRunning] = useState(false);
+    const lastTap = useRef<{ cardId: string; at: number; x: number; y: number } | null>(null);
 
     // --- shape the table to whatever screen she is playing on ---------------
     useEffect(() => {
@@ -210,6 +215,7 @@ const GameBoard: React.FC = () => {
             if (store.status !== 'playing' || autoRunning) return;
 
             if (pileId === 'stock') {
+                lastTap.current = null;
                 store.draw();
                 return;
             }
@@ -245,6 +251,7 @@ const GameBoard: React.FC = () => {
 
                 if (!started) {
                     started = true;
+                    lastTap.current = null;
                     sfx.playPickup();
                 }
 
@@ -296,17 +303,37 @@ const GameBoard: React.FC = () => {
                     }
                 }
 
-                if (!landed) {
+                if (landed) {
+                    lastTap.current = null;
+                } else {
                     const travelled = Math.hypot(e.clientX - start.x, e.clientY - start.y);
-                    const wasTap = travelled < TAP_SLOP && performance.now() - startedAt < TAP_MS;
-                    if (wasTap) {
-                        if (!card.isFaceUp && isTop && pileId.startsWith('tableau')) {
-                            live.flipTableauTop(pileId);
-                        } else if (card.isFaceUp && isTop) {
+                    const now = performance.now();
+                    const wasTap = travelled < TAP_SLOP && now - startedAt < TAP_MS;
+
+                    if (!wasTap) {
+                        if (started) sfx.playInvalid();
+                    } else if (!card.isFaceUp && isTop && pileId.startsWith('tableau')) {
+                        // Turning a card over is still a single tap.
+                        lastTap.current = null;
+                        live.flipTableauTop(pileId);
+                    } else if (card.isFaceUp && isTop) {
+                        const previous = lastTap.current;
+                        const isSecondTap =
+                            previous !== null &&
+                            previous.cardId === card.id &&
+                            now - previous.at < DOUBLE_TAP_MS &&
+                            Math.hypot(e.clientX - previous.x, e.clientY - previous.y) < DOUBLE_TAP_SLOP;
+
+                        if (isSecondTap) {
+                            lastTap.current = null;
                             if (!live.sendHome(pileId, card.id)) sfx.playPickup();
+                        } else {
+                            // First of a possible pair. A lone tap does nothing,
+                            // and says nothing, so it never reads as a failure.
+                            lastTap.current = { cardId: card.id, at: now, x: e.clientX, y: e.clientY };
                         }
-                    } else if (started) {
-                        sfx.playInvalid();
+                    } else {
+                        lastTap.current = null;
                     }
                 }
                 setDrag(null);
