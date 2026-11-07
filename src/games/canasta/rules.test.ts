@@ -604,6 +604,16 @@ describe('going out', () => {
         expect(scoreSeat(next, 'cookie').goingOut).toBe(200);
     });
 
+    it('asks a concealed hand for the same two canastas by default', () => {
+        const both = table({ cookie: { hand: hand('K K K K K K K A A A A A A A 5') } });
+        const out = must(applyMove(both, 'cookie', { type: 'goOut' }));
+        expect(out.concealed).toBe(true);
+        expect(scoreSeat(out, 'cookie').goingOut).toBe(200);
+
+        const one = table({ cookie: { hand: hand('K K K K K K K A A A 5') } });
+        expect(goingOutPlan(one, 'cookie')).toBeNull();
+    });
+
     it('does not call it concealed after an earlier meld', () => {
         const state = table({ needed: 1, cookie: { hand: hand('A A A'), melds: [meldOf('king', 'K K K K K K K')] } });
         const next = must(applyMove(state, 'cookie', { type: 'goOut' }));
