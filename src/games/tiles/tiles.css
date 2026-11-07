@@ -1,0 +1,768 @@
+/* The numbers here must match fit.ts: the tile ratio, tile gap, set padding and set gap. */
+
+/* ------------------------------------------------------------- the board */
+
+.tiles-board {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        'computer computer'
+        'status status'
+        'table table'
+        'rack side';
+    gap: 6px 12px;
+    padding: 6px 14px 10px;
+}
+
+/* A phone held sideways: the buttons take a column down the right, and the
+   computer shares a line with the status. */
+.tiles-board.is-compact {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        'computer status side'
+        'table table side'
+        'rack rack side';
+    gap: 3px 6px;
+    padding: 3px 6px 5px;
+}
+
+/* A narrow, tall window, such as a phone held upright with "Play like this". */
+@media (max-width: 640px) {
+    .tiles-board:not(.is-compact) {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+        grid-template-areas:
+            'computer'
+            'status'
+            'table'
+            'side'
+            'rack';
+        padding: 6px 8px 8px;
+    }
+}
+
+/* -------------------------------------------------------------- one tile */
+
+.tile {
+    position: relative;
+    flex: 0 0 auto;
+    width: var(--tile-w, 44px);
+    height: calc(var(--tile-w, 44px) * 1.28);
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.tile-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: calc(var(--tile-w, 44px) * 0.15);
+    background: linear-gradient(180deg, #fffaf0, #f0e5cd);
+    box-shadow:
+        0 calc(var(--tile-w, 44px) * 0.04) 0 #c9b98f,
+        0 calc(var(--tile-w, 44px) * 0.07) calc(var(--tile-w, 44px) * 0.16) rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    transition: box-shadow 140ms ease;
+}
+
+.tile.is-black {
+    color: #1d1b18;
+}
+
+.tile.is-blue {
+    color: #1460c2;
+}
+
+.tile.is-orange {
+    color: #e27a00;
+}
+
+.tile.is-red {
+    color: #c9202a;
+}
+
+.tile-number {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    font-size: calc(var(--tile-w, 44px) * 0.6);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: lining-nums;
+}
+
+/* The little dimple real tiles have under the number. */
+.tile-dot {
+    width: calc(var(--tile-w, 44px) * 0.15);
+    height: calc(var(--tile-w, 44px) * 0.15);
+    margin-top: calc(var(--tile-w, 44px) * 0.07);
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.6;
+}
+
+.tile-cookie {
+    font-size: calc(var(--tile-w, 44px) * 0.62);
+    line-height: 1;
+}
+
+.tile.is-joker .tile-inner {
+    background:
+        radial-gradient(circle at 50% 42%, rgba(255, 217, 119, 0.55), transparent 62%),
+        linear-gradient(180deg, #fffaf0, #f0e5cd);
+}
+
+/* What a joker on the table stands for: a small number in its colour. */
+.tile-role {
+    position: absolute;
+    right: 7%;
+    bottom: 3%;
+    font-size: calc(var(--tile-w, 44px) * 0.27);
+    font-weight: 800;
+    line-height: 1.1;
+    color: #6d5a33;
+}
+
+.tile-role.is-black {
+    color: #1d1b18;
+}
+
+.tile-role.is-blue {
+    color: #1460c2;
+}
+
+.tile-role.is-orange {
+    color: #e27a00;
+}
+
+.tile-role.is-red {
+    color: #c9202a;
+}
+
+.tile.is-tappable {
+    cursor: pointer;
+}
+
+@media (hover: hover) {
+    .tile.is-tappable:hover .tile-inner {
+        box-shadow:
+            0 calc(var(--tile-w, 44px) * 0.04) 0 #c9b98f,
+            0 calc(var(--tile-w, 44px) * 0.1) calc(var(--tile-w, 44px) * 0.3) rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    }
+}
+
+.tile.is-lifted {
+    z-index: 3;
+}
+
+.tile.is-lifted .tile-inner,
+.tile.is-lifted.is-tappable:hover .tile-inner {
+    box-shadow:
+        0 0 0 3px #ffd977,
+        0 calc(var(--tile-w, 44px) * 0.2) calc(var(--tile-w, 44px) * 0.4) rgba(0, 0, 0, 0.5);
+}
+
+.tile.is-fresh .tile-inner {
+    box-shadow:
+        0 0 0 2px rgba(255, 217, 119, 0.85),
+        0 calc(var(--tile-w, 44px) * 0.04) 0 #c9b98f,
+        0 calc(var(--tile-w, 44px) * 0.07) calc(var(--tile-w, 44px) * 0.16) rgba(0, 0, 0, 0.4);
+}
+
+/* A joker the tile in hand could be swapped for. */
+.tile.is-swap .tile-inner {
+    animation: tileSwapGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes tileSwapGlow {
+    0%,
+    100% {
+        box-shadow:
+            0 0 0 2px #ffd977,
+            0 0 4px 1px rgba(255, 201, 84, 0.4);
+    }
+    50% {
+        box-shadow:
+            0 0 0 3px #ffd977,
+            0 0 calc(var(--tile-w, 44px) * 0.4) 4px rgba(255, 201, 84, 0.85);
+    }
+}
+
+/* A finger on a tile should drag it, not try to scroll the page. */
+.tile.is-tappable {
+    touch-action: none;
+}
+
+.is-dragging .tile.is-lifted {
+    opacity: 0.35;
+}
+
+/* What follows the pointer during a drag. It is only a picture, so it never gets in the way of what is under it. */
+.tiles-ghost {
+    position: fixed;
+    z-index: 100;
+    display: flex;
+    gap: 3px;
+    transform: translate(-50%, -70%) rotate(-2deg);
+    filter: drop-shadow(0 12px 16px rgba(0, 0, 0, 0.45));
+    pointer-events: none;
+}
+
+.tile:focus-visible {
+    outline: 3px solid #ffd977;
+    outline-offset: 2px;
+    border-radius: calc(var(--tile-w, 44px) * 0.15);
+}
+
+.tile.is-down .tile-inner,
+.tile.is-down:not(:has(.tile-inner)) {
+    background: linear-gradient(160deg, #cfa263, #99703a);
+    box-shadow:
+        0 1px 0 #6d4e24,
+        0 1px 3px rgba(0, 0, 0, 0.45),
+        inset 0 0 0 1px rgba(255, 240, 205, 0.32);
+}
+
+.tile.is-down:not(:has(.tile-inner)) {
+    border-radius: calc(var(--tile-w, 44px) * 0.15);
+}
+
+/* ------------------------------------------------------ the computer's rack */
+
+.tiles-computer {
+    grid-area: computer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-width: 0;
+    color: #f3e6c8;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.tiles-computer-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.85;
+}
+
+.tiles-computer-rack {
+    display: flex;
+    align-items: center;
+    padding-left: var(--overlap, 0);
+}
+
+.tiles-computer-rack .tile {
+    margin-left: calc(-1 * var(--overlap, 0px));
+}
+
+.tiles-computer-count {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.is-compact .tiles-computer {
+    gap: 5px;
+    font-size: 13px;
+}
+
+.is-compact .tiles-computer-word {
+    display: none;
+}
+
+/* ---------------------------------------------------------- the status line */
+
+.tiles-status {
+    grid-area: status;
+    justify-self: center;
+    max-width: 100%;
+    padding: 5px 18px;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 18px;
+    line-height: 1.25;
+    text-align: center;
+    color: #fff8e8;
+    background: rgba(6, 20, 13, 0.45);
+    border: 1px solid rgba(255, 217, 119, 0.25);
+    border-radius: 999px;
+}
+
+.tiles-status-note {
+    color: #ffd977;
+}
+
+.tiles-status.is-computer .tiles-status-line {
+    color: #ffe9b4;
+}
+
+.is-compact .tiles-status {
+    justify-self: stretch;
+    align-self: center;
+    padding: 2px 10px;
+    font-size: 13px;
+    border-radius: 12px;
+}
+
+/* --------------------------------------------------------------- the table */
+
+.tiles-table {
+    grid-area: table;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 8px;
+    min-height: 0;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.09);
+}
+
+/* Scrolling clips the flying tiles, so it is only for a table too full to fit. */
+.tiles-table.is-overflowing {
+    overflow-y: auto;
+}
+
+.tile-set {
+    position: relative;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    max-width: 100%;
+    padding: 4px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.17);
+    outline: 2px solid transparent;
+    outline-offset: -1px;
+    cursor: pointer;
+    transition:
+        outline-color 140ms ease,
+        background 140ms ease;
+}
+
+.tile-set.is-invalid {
+    outline-color: #ff7b6b;
+    background: rgba(214, 45, 32, 0.28);
+}
+
+.tile-set.is-welcome {
+    outline-color: #ffd977;
+    background: rgba(255, 217, 119, 0.14);
+}
+
+.tile-set.is-locked {
+    cursor: default;
+    opacity: 0.86;
+}
+
+/* The one word that says why a set is red. */
+.tile-set-word {
+    position: absolute;
+    top: -7px;
+    right: 4px;
+    z-index: 4;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.35;
+    white-space: nowrap;
+    color: #fff;
+    background: #c9301f;
+    border-radius: 999px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
+
+/* The dotted spot, always there at the end of the table. */
+.tile-new-set {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    width: calc(var(--tile-w, 44px) * 2 + 3px + 8px);
+    height: calc(var(--tile-w, 44px) * 1.28 + 8px);
+    padding: 0;
+    font: inherit;
+    font-size: clamp(10px, calc(var(--tile-w, 44px) * 0.25), 13px);
+    font-weight: 600;
+    line-height: 1.1;
+    color: rgba(255, 248, 232, 0.72);
+    background: transparent;
+    border: 2px dotted rgba(255, 248, 232, 0.42);
+    border-radius: 10px;
+    cursor: pointer;
+    transition:
+        border-color 140ms ease,
+        color 140ms ease,
+        background 140ms ease;
+}
+
+.tile-new-set:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.tile-new-set.is-welcome {
+    color: #fff4d0;
+    background: rgba(255, 217, 119, 0.14);
+    border-color: #ffd977;
+}
+
+.tile-new-set:focus-visible {
+    outline: 3px solid #ffd977;
+    outline-offset: 2px;
+}
+
+/* ----------------------------------------------------------- Cookie's rack */
+
+.tiles-rack-area {
+    grid-area: rack;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.tiles-sort {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tiles-sort .btn {
+    justify-content: flex-start;
+    min-height: 40px;
+    padding: 0 11px;
+    font-size: 14px;
+}
+
+.tiles-sort .btn.is-sorted {
+    border-color: rgba(255, 217, 119, 0.65);
+}
+
+.tiles-well {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+/* A wooden tray. Empty space in it is what you tap to take a tile back. */
+.tiles-rack {
+    display: grid;
+    grid-template-columns: repeat(var(--rack-cols, 7), var(--tile-w, 44px));
+    grid-auto-rows: calc(var(--tile-w, 44px) * 1.28);
+    grid-template-rows: repeat(2, calc(var(--tile-w, 44px) * 1.28));
+    justify-content: center;
+    gap: 3px;
+    padding: 5px 6px;
+    margin: 0 -6px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #6d4a24, #4e3316);
+    box-shadow:
+        inset 0 2px 5px rgba(0, 0, 0, 0.55),
+        0 1px 0 rgba(255, 255, 255, 0.14);
+    transition: box-shadow 140ms ease;
+}
+
+.tiles-rack.is-open {
+    box-shadow:
+        inset 0 2px 5px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(255, 217, 119, 0.35);
+}
+
+.is-compact .tiles-rack {
+    padding: 3px 6px;
+}
+
+.is-compact .tiles-sort .btn {
+    width: 38px;
+    min-height: 34px;
+    padding: 0;
+    justify-content: center;
+}
+
+.is-compact .tiles-sort {
+    gap: 3px;
+}
+
+.is-compact .tiles-sort .btn span {
+    display: none;
+}
+
+/* ------------------------------------------------- the buttons and the pool */
+
+.tiles-side {
+    grid-area: side;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tiles-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+}
+
+.tiles-buttons .btn {
+    min-width: 116px;
+    padding: 0 12px;
+}
+
+.tiles-pool {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: #f3e6c8;
+}
+
+.tiles-pool-stack {
+    position: relative;
+    width: calc(var(--tile-w, 34px) + 6px);
+    height: calc(var(--tile-w, 34px) * 1.28 + 4px);
+}
+
+.tiles-pool-stack > .tile {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.tiles-pool-stack > .tiles-pool-under {
+    top: 4px;
+    left: 6px;
+}
+
+.tiles-pool-stack > .tiles-pool-mid {
+    top: 2px;
+    left: 3px;
+}
+
+.tiles-pool-count {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.tiles-pool-count strong {
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+}
+
+.tiles-pool-count span {
+    opacity: 0.72;
+}
+
+.is-compact .tiles-side {
+    flex-direction: column-reverse;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 4px;
+    width: 104px;
+}
+
+.is-compact .tiles-buttons {
+    gap: 4px;
+}
+
+.is-compact .tiles-buttons .btn {
+    min-width: 0;
+    min-height: 38px;
+    padding: 0;
+}
+
+.is-compact .tiles-buttons .tiles-end {
+    grid-column: span 2;
+    padding: 0 4px;
+    font-size: 14px;
+}
+
+.is-compact .tiles-pool {
+    flex-direction: row;
+    justify-content: center;
+    gap: 7px;
+}
+
+.is-compact .tiles-pool-count {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    font-size: 10px;
+}
+
+.is-compact .tiles-pool-count strong {
+    font-size: 15px;
+}
+
+/* Under 860px the kit hides the words in buttons, so they can be narrower. */
+@media (max-width: 860px) {
+    .tiles-board:not(.is-compact) .tiles-buttons .btn:not(.btn-primary) {
+        min-width: 52px;
+    }
+
+    .tiles-board:not(.is-compact) .tiles-buttons .btn.btn-primary {
+        min-width: 112px;
+    }
+
+    .tiles-sort .btn {
+        justify-content: center;
+    }
+}
+
+/* Messages sit over the table, never over the tiles she is about to choose from. */
+.tiles-notice .table-notice {
+    top: 36%;
+    bottom: auto;
+    width: max-content;
+    max-width: min(520px, calc(100vw - 40px));
+}
+
+@media (max-height: 560px) {
+    .tiles-notice .table-notice {
+        top: 22%;
+        padding: 9px 16px;
+        font-size: 14px;
+    }
+}
+
+/* -------------------------------------------------------- the end of a round */
+
+.win-panel.tiles-round-panel {
+    width: min(500px, calc(100vw - 32px));
+}
+
+.tiles-round-panel .win-sub {
+    margin-bottom: 12px;
+}
+
+.tiles-score {
+    width: 100%;
+    margin-bottom: 16px;
+    border-collapse: collapse;
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+}
+
+.tiles-score th,
+.tiles-score td {
+    padding: 6px 7px;
+    text-align: center;
+}
+
+.tiles-score thead th {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    opacity: 0.6;
+}
+
+.tiles-score tbody th {
+    text-align: left;
+    font-weight: 700;
+}
+
+.tiles-score thead th:first-child {
+    text-align: left;
+}
+
+.tiles-score tbody tr {
+    border-top: 1px solid rgba(90, 66, 24, 0.16);
+}
+
+.tiles-score tr.is-winner {
+    background: rgba(255, 196, 54, 0.2);
+}
+
+.tiles-score td:last-child {
+    font-weight: 700;
+}
+
+@media (max-height: 460px) {
+    .tiles-round-panel.win-panel {
+        padding: 12px 20px;
+    }
+
+    .tiles-round-panel .win-cookie {
+        display: none;
+    }
+
+    .tiles-round-panel h2 {
+        margin-top: 0;
+        font-size: 22px;
+    }
+
+    .tiles-round-panel .win-sub {
+        margin-bottom: 6px;
+        font-size: 13px;
+    }
+
+    .tiles-score {
+        margin-bottom: 8px;
+        font-size: 13px;
+    }
+
+    .tiles-score th,
+    .tiles-score td {
+        padding: 3px 5px;
+    }
+}
+
+/* ----------------------------------------------------- the rounds in settings */
+
+.settings-panel:has(.tiles-rounds) {
+    max-height: calc(100vh - 76px);
+    max-height: calc(100dvh - 76px);
+    overflow-y: auto;
+}
+
+.tiles-rounds-scroll {
+    max-height: 168px;
+    overflow-y: auto;
+}
+
+.tiles-rounds table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+.tiles-rounds th,
+.tiles-rounds td {
+    padding: 3px 8px;
+    text-align: right;
+}
+
+.tiles-rounds th:first-child,
+.tiles-rounds td:first-child {
+    text-align: left;
+}
+
+.tiles-rounds thead th {
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.6;
+}
+
+.tiles-rounds tfoot th,
+.tiles-rounds tfoot td {
+    font-weight: 700;
+    color: #ffd977;
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
