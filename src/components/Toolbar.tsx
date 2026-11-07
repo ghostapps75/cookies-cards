@@ -2,6 +2,7 @@ import React from 'react';
 import {
     Check,
     Clock,
+    Home,
     Lightbulb,
     Plus,
     Settings,
@@ -72,6 +73,9 @@ const Toolbar: React.FC<ToolbarProps> = ({ autoRunning, onAutoComplete, dragging
 
     return (
         <header className="toolbar" style={{ opacity: dragging ? 0.45 : 1 }}>
+            <a className="btn btn-icon" href="#/" aria-label="All games" title="Back to all games">
+                <Home size={20} aria-hidden />
+            </a>
             <div className="brand">
                 <span className="brand-mark">🍪</span>
                 <span className="brand-text">

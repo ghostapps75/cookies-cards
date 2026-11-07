@@ -620,3 +620,8 @@
         display: none;
     }
 }
+
+/* A link dressed as a button: the Home button in every toolbar. */
+a.btn {
+    text-decoration: none;
+}

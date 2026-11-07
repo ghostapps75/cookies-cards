@@ -1,0 +1,126 @@
+/* ------------------------------------------------- cards in page flow */
+
+/* Size comes from --card-w on any ancestor; height follows the real card. */
+.pcard {
+    position: relative;
+    flex: 0 0 auto;
+    width: var(--card-w, 84px);
+    aspect-ratio: 11 / 16;
+    border-radius: 7%;
+    perspective: 1200px;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pcard-inner {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    transform-style: preserve-3d;
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.3),
+        0 5px 12px rgba(0, 0, 0, 0.22);
+    transition: box-shadow 160ms ease;
+}
+
+.pcard-face,
+.pcard-back {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    background: #fdfdfb;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+.pcard-back {
+    transform: rotateY(180deg);
+}
+
+.pcard-face img,
+.pcard-back img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.pcard-back img {
+    object-fit: cover;
+}
+
+.pcard.is-clickable {
+    cursor: pointer;
+}
+
+.pcard.is-clickable:hover .pcard-inner {
+    box-shadow:
+        0 6px 14px rgba(0, 0, 0, 0.36),
+        0 14px 30px rgba(0, 0, 0, 0.26);
+}
+
+.pcard.is-selected .pcard-inner {
+    box-shadow:
+        0 0 0 3px #ffd977,
+        0 12px 26px rgba(0, 0, 0, 0.42);
+}
+
+.pcard.is-highlighted .pcard-inner {
+    box-shadow:
+        0 0 0 3px rgba(255, 214, 102, 0.95),
+        0 0 26px 6px rgba(255, 196, 54, 0.75);
+}
+
+.pcard.is-dimmed {
+    opacity: 0.55;
+}
+
+.pcard:focus-visible {
+    outline: 3px solid #ffd977;
+    outline-offset: 2px;
+}
+
+/* The joker is drawn, not photographed: a cookie, with the word up the sides. */
+.pcard-joker {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--card-w, 84px) * 0.5);
+    line-height: 1;
+    color: #1d1d1d;
+    background:
+        radial-gradient(circle at 50% 50%, rgba(255, 217, 119, 0.35), transparent 60%),
+        #fdfdfb;
+}
+
+.pcard-joker.is-red {
+    color: #c8322b;
+}
+
+.pcard-joker::before,
+.pcard-joker::after {
+    content: 'JOKER';
+    position: absolute;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: calc(var(--card-w, 84px) * 0.105);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+}
+
+.pcard-joker::before {
+    top: 5%;
+    left: 5%;
+}
+
+.pcard-joker::after {
+    right: 5%;
+    bottom: 5%;
+    transform: rotate(180deg);
+}
+

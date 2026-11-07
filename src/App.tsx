@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
-import GameBoard from './components/GameBoard';
+import { Suspense, useEffect, useState } from 'react';
+import Home from './components/Home';
+import { findGame } from './games/registry';
+import { useRoute } from './router';
 import { createDeck } from './utils/gameLogic';
 import { preloadCardImages } from './utils/assets';
 import { unlockAudio, warmUpAudio } from './utils/sound';
@@ -27,11 +29,17 @@ function App() {
     const [showIntro, setShowIntro] = useState(!alreadyGreeted());
     const [sideways, setSideways] = useState(false);
     const [playAnyway, setPlayAnyway] = useState(false);
+    const route = useRoute();
+    const game = findGame(route);
 
     useEffect(() => {
         preloadCardImages(createDeck());
         warmUpAudio();
     }, []);
+
+    useEffect(() => {
+        document.title = game ? `Cookie’s ${game.title}` : 'Cookie’s Cards';
+    }, [game]);
 
     useEffect(() => {
         const query = window.matchMedia(ROTATE_QUERY);
@@ -69,6 +77,8 @@ function App() {
         );
     }
 
+    const Game = game?.component;
+
     return (
         <>
             {sideways && !playAnyway && (
@@ -93,7 +103,14 @@ function App() {
                     </button>
                 </div>
             )}
-            <GameBoard />
+            {Game ? (
+                // Each game is its own chunk; the cloth shows while it loads.
+                <Suspense fallback={<div className="table-felt" />}>
+                    <Game />
+                </Suspense>
+            ) : (
+                <Home />
+            )}
         </>
     );
 }
