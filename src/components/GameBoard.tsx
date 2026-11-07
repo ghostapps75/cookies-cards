@@ -480,6 +480,7 @@ const GameBoard: React.FC = () => {
                             <PileSlot
                                 key={id}
                                 kind="foundation"
+                                pileId={id}
                                 x={metrics.origins[id].x}
                                 y={metrics.origins[id].y}
                                 legal={drag?.legalTargets.has(id)}
