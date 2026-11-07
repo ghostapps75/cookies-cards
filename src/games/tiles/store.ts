@@ -472,7 +472,8 @@ export const useTiles = create<TilesState>((set, get) => {
             sfx.playClick();
             const rack = sortRack(state.round.racks.cookie, mode);
             set({ rackSort: mode, round: { ...state.round, racks: { ...state.round.racks, cookie: rack } } });
-            saveGame(get());
+            // Never saved in the middle of the computer's turn: a reload replays that turn from its start.
+            if (!state.computer) saveGame(get());
         },
 
         computerTick: () => {
@@ -496,44 +497,36 @@ export const useTiles = create<TilesState>((set, get) => {
                 return;
             }
 
-            if (run.steps.length === 0) {
-                sfx.playDeal();
-                const hadTile = state.round.pool.length > 0;
-                const next = drawTurn(state.round);
-                if (next.result) {
-                    settle(next);
-                    return;
-                }
-                set({
-                    round: next,
-                    computer: null,
-                    fresh: [],
-                    note: hadTile ? 'Computer drew a tile.' : 'Computer passed.',
-                });
-                saveGame(get());
-                return;
-            }
+            // The rules have the last word on every turn, the computer's included:
+            // a plan they refuse is thrown out, and the computer draws as if it had found nothing.
+            const hadTile = state.round.pool.length > 0;
+            const committed = run.steps.length > 0 ? commitTurn(state.round) : null;
+            const playedIt = committed !== null && committed.problem === null;
 
-            // The rules have the last word on every turn, the computer's included.
-            const { round: next, problem } = commitTurn(state.round);
-            if (problem) {
-                settle(failed(state.round));
-                return;
-            }
-            const { start } = state.round;
-            const played = start.rack.filter(tile => !state.round.racks.computer.some(other => other.id === tile.id));
+            let next: Round;
+            if (playedIt) next = committed.round;
+            else if (committed) next = failTurn(state.round);
+            else next = drawTurn(state.round);
+
             if (next.result) {
                 settle(next);
                 return;
             }
-            let said = played.length === 1 ? 'Computer played 1 tile.' : `Computer played ${played.length} tiles.`;
-            if (!state.round.opened.computer) said = `${run.steps[run.steps.length - 1].say}.`;
-            set({
-                round: next,
-                computer: null,
-                fresh: played.map(tile => tile.id),
-                note: said,
-            });
+
+            const { start } = state.round;
+            const played = playedIt
+                ? start.rack.filter(tile => !state.round.racks.computer.some(other => other.id === tile.id))
+                : [];
+
+            let said = hadTile ? 'Computer drew a tile.' : 'Computer passed.';
+            if (playedIt) {
+                said = played.length === 1 ? 'Computer played 1 tile.' : `Computer played ${played.length} tiles.`;
+                if (!state.round.opened.computer) said = `${run.steps[run.steps.length - 1].say}.`;
+            } else {
+                sfx.playDeal();
+            }
+
+            set({ round: next, computer: null, fresh: played.map(tile => tile.id), note: said });
             saveGame(get());
         },
 
@@ -554,11 +547,6 @@ export const useTiles = create<TilesState>((set, get) => {
 
         clearNotice: () => set({ notice: null }),
     };
-
-    /** Should never happen: the plan broke a rule, so its turn is thrown out and the game goes on. */
-    function failed(round: Round): Round {
-        return failTurn(round);
-    }
 });
 
 /** Everything needed to know whether End turn may be pressed. */

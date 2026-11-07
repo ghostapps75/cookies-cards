@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fitTable, fitsAt } from './fit';
+import { SNUG, fitTable, fitsAt } from './fit';
 import { dealRound, moveTiles, withBoard, type Round, type TableSet, type Tile, type TileColor } from './rules';
 import { canSwapForJoker, cookieStatus } from './status';
 
@@ -102,6 +102,14 @@ describe('fitting the table to the window', () => {
         expect(tile).toBeLessThan(40);
         expect(fitsAt(tile, 620, 180, many)).toBe(true);
         expect(fitsAt(tile + 1, 620, 180, many)).toBe(false);
+    });
+
+    it('fits a nearly full table on the smallest phone, sideways', () => {
+        // 106 tiles in threes and fours, in the room a 667 by 375 screen leaves for the table.
+        const everything = Array.from({ length: 34 }, (_, i) => (i % 3 === 0 ? 4 : 3));
+        const { tile, overflows } = fitTable(537, 210, everything, 18, 40, SNUG);
+        expect(overflows).toBe(false);
+        expect(tile).toBeGreaterThanOrEqual(18);
     });
 
     it('says so when even the smallest tile will not fit', () => {

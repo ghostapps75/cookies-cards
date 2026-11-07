@@ -210,6 +210,9 @@ describe('after opening', () => {
 });
 
 describe('self-play', () => {
+    /** How many times each kind of move was made, by what the computer says about it. */
+    const said = new Map<string, number>();
+
     const playRound = (seed: number) => {
         let round: Round = dealRound(seed);
         let turns = 0;
@@ -229,6 +232,7 @@ describe('self-play', () => {
 
             let previous = currentBoard(round);
             for (const step of steps) {
+                said.set(step.say.replace(/\d+/, 'N'), (said.get(step.say.replace(/\d+/, 'N')) ?? 0) + 1);
                 // Every step of a turn leaves a good table and a smaller rack.
                 expect(isTableValid(step.table), `seed ${seed} turn ${turns}: bad step`).toBe(true);
                 expect(step.rack.length).toBeLessThan(previous.rack.length);
@@ -268,5 +272,17 @@ describe('self-play', () => {
         expect(ways.out + ways.blocked).toBe(50);
         // A healthy player goes out most of the time rather than running the pool dry.
         expect(ways.out).toBeGreaterThan(25);
+
+        // Every kind of move turned up in real games, not only in the hand-made positions above.
+        for (const move of [
+            'Computer opened with N points',
+            'Computer played a new set',
+            'Computer added to a set',
+            'Computer borrowed from the table to make a set',
+            'Computer split a run to fit a tile in',
+            'Computer swapped a tile for a joker',
+        ]) {
+            expect(said.get(move) ?? 0, `${move} never happened`).toBeGreaterThan(0);
+        }
     });
 });

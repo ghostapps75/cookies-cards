@@ -4,11 +4,18 @@
  */
 
 export const TILE_RATIO = 1.28;
-export const TILE_GAP = 3;
-export const SET_PAD = 4;
-export const SET_GAP = 8;
 /** The dotted "new set" spot is as wide as a set of this many tiles. */
 export const NEW_SET_SPOT_TILES = 2;
+
+export interface Spacing {
+    tileGap: number;
+    setPad: number;
+    setGap: number;
+}
+
+export const ROOMY: Spacing = { tileGap: 3, setPad: 4, setGap: 8 };
+/** On a phone held sideways, every pixel between tiles is a pixel off the tiles. */
+export const SNUG: Spacing = { tileGap: 2, setPad: 3, setGap: 4 };
 
 export interface TableFit {
     /** Tile width in pixels. */
@@ -18,28 +25,34 @@ export interface TableFit {
 }
 
 /** Packs the sets the way a wrapping flex row would. Does it all fit at this tile size? */
-export const fitsAt = (tile: number, width: number, height: number, sets: readonly number[]): boolean => {
+export const fitsAt = (
+    tile: number,
+    width: number,
+    height: number,
+    sets: readonly number[],
+    { tileGap, setPad, setGap }: Spacing = ROOMY,
+): boolean => {
     const tileHeight = Math.round(tile * TILE_RATIO);
     let x = 0;
     let y = 0;
     let rowHeight = 0;
 
     for (const size of [...sets, NEW_SET_SPOT_TILES]) {
-        let setWidth = size * tile + (size - 1) * TILE_GAP + 2 * SET_PAD;
-        let setHeight = tileHeight + 2 * SET_PAD;
+        let setWidth = size * tile + (size - 1) * tileGap + 2 * setPad;
+        let setHeight = tileHeight + 2 * setPad;
         if (setWidth > width) {
             // Longer than the table is wide: it wraps inside its own box.
-            const perRow = Math.max(1, Math.floor((width - 2 * SET_PAD + TILE_GAP) / (tile + TILE_GAP)));
+            const perRow = Math.max(1, Math.floor((width - 2 * setPad + tileGap) / (tile + tileGap)));
             const rows = Math.ceil(size / perRow);
             setWidth = width;
-            setHeight = rows * tileHeight + (rows - 1) * TILE_GAP + 2 * SET_PAD;
+            setHeight = rows * tileHeight + (rows - 1) * tileGap + 2 * setPad;
         }
         if (x > 0 && x + setWidth > width) {
-            y += rowHeight + SET_GAP;
+            y += rowHeight + setGap;
             x = 0;
             rowHeight = 0;
         }
-        x += setWidth + SET_GAP;
+        x += setWidth + setGap;
         rowHeight = Math.max(rowHeight, setHeight);
     }
     return y + rowHeight <= height;
@@ -52,9 +65,10 @@ export const fitTable = (
     sets: readonly number[],
     min: number,
     max: number,
+    spacing: Spacing = ROOMY,
 ): TableFit => {
     for (let tile = max; tile >= min; tile--) {
-        if (fitsAt(tile, width, height, sets)) return { tile, overflows: false };
+        if (fitsAt(tile, width, height, sets, spacing)) return { tile, overflows: false };
     }
     return { tile: min, overflows: true };
 };

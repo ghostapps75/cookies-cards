@@ -1,14 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export interface ElementSize {
     width: number;
     height: number;
 }
 
-/** The content box of an element, kept up to date. Pass the setter as the element's `ref`. */
+const contentBox = (element: HTMLElement): ElementSize => {
+    const style = getComputedStyle(element);
+    return {
+        width: element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+        height: element.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom),
+    };
+};
+
+/**
+ * The content box of an element, kept up to date. Pass the setter as the
+ * element's `ref`. It measures as soon as the element exists, before the first
+ * paint, so a table opens already sized instead of sliding into place.
+ */
 export const useElementSize = <T extends HTMLElement>(): [(element: T | null) => void, ElementSize] => {
     const [element, setElement] = useState<T | null>(null);
     const [size, setSize] = useState<ElementSize>({ width: 0, height: 0 });
+
+    const ref = useCallback((next: T | null) => {
+        setElement(next);
+        if (next) setSize(contentBox(next));
+    }, []);
 
     useEffect(() => {
         if (!element) return;
@@ -24,5 +41,5 @@ export const useElementSize = <T extends HTMLElement>(): [(element: T | null) =>
         return () => observer.disconnect();
     }, [element]);
 
-    return [setElement, size];
+    return [ref, size];
 };

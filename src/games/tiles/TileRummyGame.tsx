@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import GameShell, { Confirm, Notice, Stat } from '../shared/GameShell';
 import * as sfx from '../../utils/sound';
-import { fitTable } from './fit';
+import { ROOMY, SNUG, fitTable } from './fit';
 import {
     boardChanged,
     canReplaceJoker,
@@ -45,6 +45,7 @@ const clamp = (value: number, min: number, max: number): number => Math.min(max,
 
 /** Under this board height the table is a phone held sideways: every row earns its keep. */
 const COMPACT_HEIGHT = 500;
+const TOOLBAR_GUESS = 58;
 
 /* ----------------------------------------------------------- a set on the table */
 
@@ -233,18 +234,22 @@ const TileRummyGame: React.FC = () => {
 
     /* ---------------------------------------------------------------- sizes */
 
-    const compact = boardSize.height > 0 && boardSize.height < COMPACT_HEIGHT;
+    // Before the first measurement the window is close enough to choose the right layout.
+    const boardHeight = boardSize.height > 0 ? boardSize.height : window.innerHeight - TOOLBAR_GUESS;
+    const compact = boardHeight < COMPACT_HEIGHT;
     const rack = round.racks.cookie;
     const rackColumns = Math.max(7, Math.ceil(rack.length / 2));
     const rackByWidth = wellSize.width > 0 ? (wellSize.width - (rackColumns - 1) * 3) / rackColumns : 44;
-    const rackByHeight = compact ? Math.min(40, boardSize.height * 0.108) : clamp(boardSize.height * 0.082, 34, 56);
+    const rackByHeight = compact ? Math.min(40, boardHeight * 0.108) : clamp(boardHeight * 0.082, 34, 56);
     const rackTile = Math.floor(clamp(Math.min(rackByWidth, rackByHeight), 16, 56));
 
     const tableSizes = useMemo(() => round.table.map(set => set.tiles.length), [round.table]);
     const fit = useMemo(
-        () => fitTable(tableSize.width, tableSize.height, tableSizes, 18, compact ? 40 : 52),
+        () => fitTable(tableSize.width, tableSize.height, tableSizes, 18, compact ? 40 : 52, compact ? SNUG : ROOMY),
         [tableSize.width, tableSize.height, tableSizes, compact],
     );
+    // On a phone a nearly empty tray gives its second row back to the table.
+    const rackRows = compact && rack.length <= rackColumns ? 1 : 2;
 
     const computerTile = compact ? 12 : 20;
     const computerRoom = compact ? 72 : 360;
@@ -368,8 +373,8 @@ const TileRummyGame: React.FC = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {rounds.map(record => (
-                                            <tr key={record.number}>
+                                        {rounds.map((record, index) => (
+                                            <tr key={index}>
                                                 <td>{record.number}</td>
                                                 <td>{signed(record.cookie)}</td>
                                                 <td>{signed(record.computer)}</td>
@@ -390,6 +395,22 @@ const TileRummyGame: React.FC = () => {
                             {stats.played === 0
                                 ? 'Rounds you win are remembered here.'
                                 : `You have won ${stats.won} of ${stats.played} rounds in all.`}
+                        </p>
+                    </section>
+                    <section className="tiles-howto">
+                        <h3>How to play</h3>
+                        <p className="row-note">Be the first to empty your rack by laying down sets of three or more:</p>
+                        <p className="row-note">
+                            the <strong>same number</strong> in different colours, or <strong>numbers in a row</strong>{' '}
+                            in one colour.
+                        </p>
+                        <p className="row-note">
+                            Your first play has to add up to 30 points from your own rack. That is called opening.
+                            After that you may also move tiles around on the table, as long as every set is good when
+                            you end your turn.
+                        </p>
+                        <p className="row-note">
+                            The 🍪 is a joker and can be any tile. If you can play nothing, draw a tile from the pool.
                         </p>
                     </section>
                     <section>
@@ -450,31 +471,37 @@ const TileRummyGame: React.FC = () => {
                     <span className="tiles-status-line">{status}</span>
                 </div>
 
+                <div className="tiles-sort">
+                    <button
+                        className={`btn${rackSort === 'color' ? ' is-sorted' : ''}`}
+                        onClick={act(() => useTiles.getState().sortBy('color'))}
+                        title="Sort your rack by colour"
+                        aria-label="Sort by colour"
+                    >
+                        <Palette size={18} aria-hidden />
+                        <span>Colour</span>
+                    </button>
+                    <button
+                        className={`btn${rackSort === 'number' ? ' is-sorted' : ''}`}
+                        onClick={act(() => useTiles.getState().sortBy('number'))}
+                        title="Sort your rack by number"
+                        aria-label="Sort by number"
+                    >
+                        <ArrowDown01 size={18} aria-hidden />
+                        <span>Number</span>
+                    </button>
+                </div>
+
                 <div
                     className="tiles-rack-area"
-                    style={{ '--tile-w': `${rackTile}px`, '--rack-cols': String(rackColumns) } as Vars}
+                    style={
+                        {
+                            '--tile-w': `${rackTile}px`,
+                            '--rack-cols': String(rackColumns),
+                            '--rack-rows': String(rackRows),
+                        } as Vars
+                    }
                 >
-                    <div className="tiles-sort">
-                        <button
-                            className={`btn${rackSort === 'color' ? ' is-sorted' : ''}`}
-                            onClick={act(() => useTiles.getState().sortBy('color'))}
-                            title="Sort your rack by colour"
-                            aria-label="Sort by colour"
-                        >
-                            <Palette size={18} aria-hidden />
-                            <span>Colour</span>
-                        </button>
-                        <button
-                            className={`btn${rackSort === 'number' ? ' is-sorted' : ''}`}
-                            onClick={act(() => useTiles.getState().sortBy('number'))}
-                            title="Sort your rack by number"
-                            aria-label="Sort by number"
-                        >
-                            <ArrowDown01 size={18} aria-hidden />
-                            <span>Number</span>
-                        </button>
-                    </div>
-
                     <div ref={wellRef} className="tiles-well">
                         <div
                             className={`tiles-rack${myTurn && lifted.length > 0 ? ' is-open' : ''}`}
