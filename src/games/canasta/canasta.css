@@ -1,0 +1,478 @@
+/* ------------------------------------------------------ Cookie's Canasta */
+
+/* The table is sized from the room it has been given, not from the window, so a
+   phone held sideways gets the same table as a laptop, only smaller. Every card
+   size hangs off --u. */
+.cn-root {
+    position: absolute;
+    inset: 0;
+    container-type: size;
+}
+
+.cn-table {
+    --u: min(1cqh, 0.72cqw);
+    --gap: calc(var(--u) * 1.4);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: calc(var(--u) * 0.8);
+    height: 100%;
+    padding: calc(var(--u) * 1.2) calc(var(--u) * 2.4) calc(var(--u) * 1);
+}
+
+.cn-row {
+    display: flex;
+    align-items: center;
+    gap: var(--gap);
+    min-width: 0;
+}
+
+/* ------------------------------------------------------------ small bits */
+
+.cn-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: max(16px, calc(var(--u) * 3.1));
+    height: max(16px, calc(var(--u) * 3.1));
+    padding: 0 max(3px, calc(var(--u) * 0.5));
+    font-size: max(10.5px, calc(var(--u) * 1.9));
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: #fff8e8;
+    background: #1b2b21;
+    border: 1px solid rgba(255, 217, 119, 0.55);
+    border-radius: 999px;
+    transform: translate(35%, -35%);
+    pointer-events: none;
+}
+
+.cn-stat-mark {
+    align-self: center;
+    font-size: 15px;
+    line-height: 1;
+}
+
+/* Looks like a disabled button but still answers a tap, to say why it is off. */
+.btn.cn-off {
+    opacity: 0.34;
+    cursor: default;
+}
+
+.btn.cn-off:hover {
+    filter: none;
+}
+
+/* ----------------------------------------------------------------- stacks */
+
+.cn-melds {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: calc(var(--u) * 1.5);
+    min-width: 0;
+    min-height: calc(var(--card-w) * 16 / 11);
+}
+
+.cn-empty-row {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: max(12px, calc(var(--u) * 2.2));
+    font-style: italic;
+    color: rgba(246, 240, 228, 0.42);
+}
+
+.cn-stack {
+    position: relative;
+    flex: 0 0 auto;
+    width: calc(var(--card-w) * (1 + 0.2 * var(--wilds)) + 5px);
+    height: calc(var(--card-w) * 16 / 11);
+    border-radius: 8%;
+}
+
+.cn-stack.is-tappable {
+    cursor: pointer;
+}
+
+.cn-stack.is-tappable:focus-visible {
+    outline: 3px solid #ffd977;
+    outline-offset: 3px;
+}
+
+.cn-stack-card {
+    position: absolute;
+    top: 0;
+    left: calc(var(--card-w) * 0.2 * var(--wild-spot) + var(--natural-spot) * 1.6px);
+}
+
+/* Seven cards: a canasta, and it glows. */
+.cn-stack.is-canasta::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 9%;
+    box-shadow:
+        0 0 0 2px rgba(255, 217, 119, 0.95),
+        0 0 calc(var(--u) * 2.6) calc(var(--u) * 0.7) rgba(255, 196, 54, 0.75);
+    pointer-events: none;
+}
+
+.cn-worth {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    z-index: 200;
+    padding: 0 max(3px, calc(var(--u) * 0.7));
+    font-size: max(9.5px, calc(var(--u) * 1.8));
+    font-weight: 700;
+    line-height: 1.35;
+    color: #34240a;
+    background: linear-gradient(180deg, #ffdc8a, #f0b23f);
+    border-radius: 999px;
+    transform: translate(-50%, 40%);
+    pointer-events: none;
+}
+
+/* ----------------------------------------------------------- the computer */
+
+.cn-theirs {
+    --card-w: calc(var(--u) * 11);
+}
+
+.cn-fan-wrap {
+    position: relative;
+    flex: 0 0 auto;
+    display: flex;
+    margin-right: calc(var(--u) * 1.5);
+}
+
+.cn-fan {
+    display: flex;
+    /* A fixed place for the fan, so the melds beside it stay put as it shrinks. */
+    width: min(26cqw, calc(var(--card-w) * 3.2));
+}
+
+/* The shared card has no resting state on mount: it starts face up and flips,
+   which would flash the computer's hand and the next stock card at every deal
+   and reload. These cards are never seen face up here, so they stay turned. */
+.cn-fan .pcard-inner,
+.cn-stock .pcard-inner {
+    transform: rotateY(180deg) !important;
+}
+
+.cn-fan-slot {
+    flex: 0 1 calc(var(--card-w) * 0.16);
+    min-width: 0;
+}
+
+.cn-fan-slot:last-child {
+    position: relative;
+    flex: 0 0 var(--card-w);
+}
+
+/* ---------------------------------------------------------------- the middle */
+
+.cn-middle {
+    gap: calc(var(--u) * 3.4);
+}
+
+.cn-piles {
+    --card-w: calc(var(--u) * 13.5);
+    flex: 0 0 auto;
+    display: flex;
+    gap: calc(var(--u) * 3.6);
+    padding: 0 calc(var(--u) * 2.2) 0 calc(var(--u) * 1);
+}
+
+.cn-slot {
+    position: relative;
+    width: var(--card-w);
+    height: calc(var(--card-w) * 16 / 11);
+    cursor: pointer;
+    border-radius: 7%;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.14);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.cn-slot:focus-visible {
+    outline: 3px solid #ffd977;
+    outline-offset: 3px;
+}
+
+.cn-slot-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--u) * 2);
+    color: rgba(255, 255, 255, 0.42);
+}
+
+.cn-slot-label {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--u) * -0.4);
+    font-size: calc(var(--u) * 1.6);
+    letter-spacing: 0.06em;
+    text-align: center;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0);
+}
+
+.cn-pile-card {
+    position: absolute;
+    top: calc(var(--spot, 0) * -1.5px);
+    left: calc(var(--spot, 0) * 1.5px);
+}
+
+.cn-stock.is-live .cn-pile-card:last-of-type .pcard-inner {
+    box-shadow:
+        0 0 0 2px rgba(255, 217, 119, 0.55),
+        0 5px 12px rgba(0, 0, 0, 0.3);
+}
+
+.cn-tag {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    z-index: 200;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px calc(var(--u) * 0.9);
+    font-size: max(11px, calc(var(--u) * 1.8));
+    font-weight: 700;
+    line-height: 1.4;
+    white-space: nowrap;
+    color: #fff8e8;
+    background: #1b2b21;
+    border: 1px solid rgba(255, 217, 119, 0.5);
+    border-radius: 999px;
+    transform: translate(-50%, 45%);
+    pointer-events: none;
+}
+
+.cn-tag.is-frozen {
+    color: #d6f2ff;
+    background: #123a56;
+    border-color: rgba(158, 222, 255, 0.7);
+}
+
+.cn-controls {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--u) * 1.2);
+    min-width: 0;
+}
+
+.cn-status {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.cn-status strong {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(15px, calc(var(--u) * 3.6), 26px);
+    font-weight: 700;
+    line-height: 1.15;
+    color: #ffd977;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.cn-status small {
+    min-height: 1.25em;
+    font-size: clamp(11px, calc(var(--u) * 2.2), 15px);
+    line-height: 1.25;
+    color: rgba(246, 240, 228, 0.78);
+}
+
+.cn-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--u) * 1.1);
+}
+
+/* ---------------------------------------------------------------- her side */
+
+.cn-mine {
+    --card-w: calc(var(--u) * 11);
+    padding-left: calc(var(--u) * 0.4);
+}
+
+.cn-hand {
+    --card-w: calc(var(--u) * 20);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    flex: 0 0 auto;
+    width: 100%;
+    /* Room for a chosen card to lift, and the table keeps its shape when the hand empties. */
+    padding-top: 15px;
+    min-height: calc(var(--card-w) * 16 / 11 + 15px);
+}
+
+.cn-hand-slot {
+    flex: 0 1 calc(var(--card-w) * 0.62);
+    min-width: 0;
+    margin-top: calc(var(--arc) * var(--u) * 1.5);
+}
+
+.cn-hand-slot:last-child {
+    flex: 0 0 var(--card-w);
+}
+
+/* --------------------------------------------------------------- the panel */
+
+.cn-panel {
+    width: min(460px, calc(100vw - 24px));
+    max-height: calc(100dvh - 12px);
+    overflow-y: auto;
+    padding: 18px 26px 16px;
+}
+
+.cn-panel h2 {
+    margin-top: 0;
+    font-size: 27px;
+}
+
+.cn-panel .win-sub {
+    margin-bottom: 8px;
+}
+
+.cn-panel .win-cookie {
+    font-size: 36px;
+}
+
+.cn-scores {
+    width: 100%;
+    margin: 0 0 12px;
+    font-size: 14.5px;
+    font-variant-numeric: tabular-nums;
+    border-collapse: collapse;
+}
+
+.cn-scores th,
+.cn-scores td {
+    padding: 2.5px 6px;
+    text-align: right;
+    font-weight: 500;
+}
+
+.cn-scores thead th {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.6;
+}
+
+.cn-scores tbody th {
+    text-align: left;
+    color: rgba(44, 34, 22, 0.8);
+}
+
+.cn-scores .is-sum th,
+.cn-scores .is-sum td {
+    font-weight: 700;
+    border-top: 1px solid rgba(90, 66, 24, 0.28);
+}
+
+.cn-scores .is-total th,
+.cn-scores .is-total td {
+    font-weight: 800;
+    font-size: 16px;
+    color: #8a5a12;
+}
+
+/* -------------------------------------------------------------- settings */
+
+.cn-choice {
+    display: flex;
+    gap: 6px;
+}
+
+.cn-choice .row-btn {
+    flex: 1 1 0;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.cn-choice .row-btn.is-active {
+    background: rgba(255, 217, 119, 0.14);
+}
+
+/* A short window could otherwise push the bottom of the settings out of reach. */
+.table-felt:has(.cn-root) .settings-panel {
+    max-height: calc(100dvh - 66px);
+    overflow-y: auto;
+}
+
+/* -------------------------------------------------- a phone held sideways */
+
+@media (max-height: 480px) {
+    .cn-panel {
+        padding: 8px 20px 10px;
+        width: min(430px, calc(100vw - 16px));
+    }
+
+    .cn-panel h2 {
+        margin: 0;
+        font-size: 20px;
+    }
+
+    .cn-panel .win-sub {
+        margin: 0 0 3px;
+        font-size: 12px;
+    }
+
+    .cn-panel .win-cookie {
+        display: none;
+    }
+
+    .cn-scores {
+        margin-bottom: 6px;
+        font-size: 12.5px;
+    }
+
+    .cn-scores th,
+    .cn-scores td {
+        padding: 0.5px 6px;
+    }
+
+    .cn-scores .is-total th,
+    .cn-scores .is-total td {
+        font-size: 13.5px;
+    }
+
+    .cn-controls {
+        gap: 3px;
+    }
+
+    .cn-status strong {
+        font-size: 14px;
+    }
+
+    .cn-status small {
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .cn-buttons .btn {
+        min-height: 36px;
+    }
+
+    .cn-hand {
+        padding-top: 12px;
+    }
+}
