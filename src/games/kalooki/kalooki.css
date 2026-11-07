@@ -1,0 +1,484 @@
+/* The Kalooki table. Laptop first: top to bottom it is the computer, the piles
+   and melds, the line that says what to do, the buttons, and Cookie's hand.
+   Card sizes follow the height of the window, because that is what runs out. */
+
+.kal-table {
+    --hand-w: clamp(46px, min(calc(9.7vh + 22px), 15vw), 112px);
+    --comp-w: clamp(22px, calc(5.45vh + 5px), 56px);
+    --pile-w: clamp(38px, calc(7.9vh + 11px), 84px);
+
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+        'computer computer'
+        'piles melds'
+        'bar bar'
+        'hand hand';
+    gap: 8px 16px;
+    padding: 8px 14px 10px;
+}
+
+/* --------------------------------------------------------------- computer */
+
+.kal-computer {
+    grid-area: computer;
+    z-index: 4;
+    --card-w: var(--comp-w);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.kal-who {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 15px;
+    color: #f3e6c8;
+    white-space: nowrap;
+}
+
+.kal-fan {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.kal-fan .pcard + .pcard {
+    margin-left: calc(var(--comp-w) * -0.74);
+}
+
+.kal-count,
+.kal-pile-count {
+    font-size: 14px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #fff8e8;
+    background: rgba(0, 0, 0, 0.42);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    padding: 1px 9px;
+}
+
+/* ------------------------------------------------------------------ piles */
+
+.kal-piles {
+    grid-area: piles;
+    z-index: 4;
+    --card-w: var(--pile-w);
+    align-self: center;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.kal-pile {
+    position: relative;
+    display: block;
+    width: var(--pile-w);
+    aspect-ratio: 11 / 16;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    background: rgba(0, 0, 0, 0.14);
+    border: 2px dashed rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.kal-pile:focus-visible {
+    outline: 3px solid #ffd977;
+    outline-offset: 3px;
+}
+
+.kal-pile.is-live {
+    box-shadow:
+        0 0 0 3px rgba(255, 214, 102, 0.9),
+        0 0 22px 4px rgba(255, 196, 54, 0.5);
+}
+
+.kal-pile-count {
+    position: absolute;
+    left: 50%;
+    bottom: -8px;
+    z-index: 3;
+    transform: translateX(-50%);
+    font-size: 13px;
+}
+
+.kal-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    font-size: 12px;
+    line-height: 1.2;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* ------------------------------------------------------------------ melds */
+
+.kal-melds {
+    grid-area: melds;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    --card-w: var(--meld-w, 48px);
+    /* Above the buttons and the hand, so that a card flying here stays in view. */
+    z-index: 4;
+}
+
+.kal-group {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.kal-group-label {
+    margin: 0;
+    height: 18px;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 18px;
+    color: rgba(243, 230, 200, 0.82);
+}
+
+.kal-group-melds {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 8px;
+}
+
+.kal-meld {
+    display: flex;
+    padding: 3px;
+    border-radius: 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.kal-meld:focus-visible {
+    outline: 3px solid #ffd977;
+    outline-offset: 1px;
+}
+
+.kal-meld.is-target {
+    background: rgba(255, 214, 102, 0.22);
+    box-shadow:
+        0 0 0 3px rgba(255, 214, 102, 0.95),
+        0 0 18px 3px rgba(255, 196, 54, 0.55);
+}
+
+.kal-meld.is-tentative {
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55);
+}
+
+.kal-meld-card {
+    position: relative;
+    flex: 0 0 calc(var(--card-w) * 0.36);
+    min-width: 0;
+}
+
+.kal-meld-card:last-child {
+    flex-basis: var(--card-w);
+}
+
+/* What a joker on the table stands for, so that swapping it makes sense. */
+.kal-stands {
+    position: absolute;
+    left: 2px;
+    bottom: 3px;
+    z-index: 3;
+    padding: 0 4px;
+    font-size: clamp(10px, calc(var(--card-w) * 0.24), 14px);
+    font-weight: 700;
+    line-height: 1.35;
+    white-space: nowrap;
+    color: #34240a;
+    background: #ffd977;
+    border-radius: 5px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
+
+/* -------------------------------------------------- the line and the buttons */
+
+.kal-bar {
+    grid-area: bar;
+    z-index: 2;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.kal-status {
+    max-width: 100%;
+    padding: 5px 20px;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 19px;
+    line-height: 1.25;
+    text-align: center;
+    color: #ffe9b0;
+    background: rgba(6, 20, 13, 0.55);
+    border: 1px solid rgba(255, 217, 119, 0.28);
+    border-radius: 999px;
+}
+
+.kal-buttons {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Still tappable, so that it can say why it is not ready. */
+.btn.kal-off {
+    opacity: 0.5;
+}
+
+/* ------------------------------------------------------------------- hand */
+
+.kal-hand {
+    grid-area: hand;
+    z-index: 3;
+    --card-w: var(--hand-w);
+    min-width: 0;
+    display: flex;
+    justify-content: center;
+    padding-top: 4px;
+}
+
+/* Each slot gives way as the hand grows, so fifteen cards fit and nothing
+   scrolls. The last card keeps its full width. */
+.kal-slot {
+    flex: 0 1 calc(var(--hand-w) * 0.64);
+    min-width: 0;
+}
+
+.kal-slot:last-child {
+    flex: 0 0 var(--hand-w);
+}
+
+/* ------------------------------------------------------- end of hand panel */
+
+.kal-panel {
+    padding: 18px 26px 18px;
+}
+
+.kal-panel-cookie {
+    font-size: 36px;
+}
+
+.kal-panel .win-sub {
+    margin-bottom: 12px;
+}
+
+.kal-panel-grid {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr;
+    align-items: center;
+    gap: 6px 10px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    background: rgba(140, 100, 30, 0.09);
+    border-radius: 12px;
+}
+
+.kal-row-label {
+    text-align: left;
+}
+
+/* --------------------------------------------------------------- settings */
+
+.settings-panel:has(.kal-settings) {
+    width: min(320px, calc(100vw - 28px));
+    max-height: calc(100vh - 76px);
+    overflow-y: auto;
+}
+
+.kal-scores table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+.kal-scores th {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-align: right;
+    text-transform: uppercase;
+    opacity: 0.6;
+}
+
+.kal-scores td {
+    padding: 2px 0;
+    text-align: right;
+}
+
+.kal-scores th:first-child,
+.kal-scores td:first-child {
+    padding-left: 10px;
+    text-align: left;
+}
+
+.kal-scores th:last-child,
+.kal-scores td:last-child {
+    padding-right: 10px;
+}
+
+.kal-scores tfoot td {
+    padding-top: 4px;
+    font-weight: 700;
+    color: #ffd977;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.settings-panel .record .row-btn {
+    margin-top: 6px;
+}
+
+.kal-howto p {
+    margin: 0 0 6px;
+    padding: 0 10px;
+    font-size: 13px;
+    line-height: 1.45;
+    opacity: 0.78;
+}
+
+/* ------------------------------------------------- narrower laptop windows */
+
+@media (max-width: 860px) and (min-width: 640px) {
+    /* The shared buttons hide their words on small screens. There is room here,
+       and Cookie should not have to guess what an icon means. */
+    .kal-buttons .btn {
+        padding: 0 10px;
+        gap: 5px;
+        font-size: 13px;
+    }
+
+    .kal-buttons .btn span {
+        display: inline;
+    }
+}
+
+/* -------------------------------------------------- a phone held sideways */
+
+@media (max-height: 520px) {
+    .kal-table {
+        grid-template-rows: auto minmax(0, 1fr) auto auto;
+        grid-template-areas:
+            'computer melds'
+            'piles melds'
+            'bar bar'
+            'hand hand';
+        gap: 4px 10px;
+        padding: 4px 10px 6px;
+    }
+
+    .kal-computer {
+        justify-content: flex-start;
+        gap: 6px;
+    }
+
+    .kal-who {
+        display: none;
+    }
+
+    .kal-count {
+        font-size: 12px;
+        padding: 0 7px;
+    }
+
+    .kal-piles {
+        align-self: start;
+        gap: 8px;
+        padding-top: 2px;
+    }
+
+    .kal-pile-count {
+        bottom: -5px;
+        font-size: 11px;
+        padding: 0 6px;
+    }
+
+    .kal-group-label {
+        height: 16px;
+        font-size: 12px;
+        line-height: 16px;
+    }
+
+    .kal-bar {
+        flex-direction: row;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .kal-status {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 3px 12px;
+        font-size: 14px;
+        border-radius: 12px;
+    }
+
+    .kal-buttons {
+        flex: 0 0 auto;
+        gap: 5px;
+    }
+
+    .kal-hand {
+        padding-top: 0;
+    }
+
+    .kal-panel {
+        padding: 10px 20px 12px;
+    }
+
+    .kal-panel-cookie {
+        display: none;
+    }
+
+    .kal-panel h2 {
+        margin-top: 0;
+        font-size: 22px;
+    }
+
+    .kal-panel .win-sub {
+        margin-bottom: 8px;
+        font-size: 13px;
+    }
+
+    .kal-panel-grid {
+        margin-bottom: 8px;
+        padding: 6px 10px;
+        gap: 2px 10px;
+    }
+
+    .kal-panel .win-value {
+        font-size: 17px;
+    }
+
+    .kal-panel .win-record {
+        margin-bottom: 6px;
+    }
+}
