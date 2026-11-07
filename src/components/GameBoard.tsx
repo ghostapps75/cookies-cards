@@ -148,6 +148,8 @@ const GameBoard: React.FC = () => {
     useEffect(() => {
         const total = dealOrder.size;
         setDealtCount(0);
+        // An empty table, while the dealer is still finding a hand.
+        if (total === 0) return;
         let handed = 0;
         const id = window.setInterval(() => {
             handed += 1;
@@ -465,7 +467,8 @@ const GameBoard: React.FC = () => {
                         kind="stock"
                         x={metrics.origins.stock.x}
                         y={metrics.origins.stock.y}
-                        stockEmpty={stock.length === 0}
+                        stockEmpty={stock.length === 0 && status !== 'shuffling'}
+                        shuffling={status === 'shuffling'}
                         hinted={hint?.deckOnly}
                         onPointerDown={handleStockSlot}
                     />

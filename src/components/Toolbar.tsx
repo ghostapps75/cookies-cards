@@ -37,6 +37,9 @@ const Toolbar: React.FC<ToolbarProps> = ({ autoRunning, onAutoComplete, dragging
     const historyLength = useGameStore(s => s.history.length);
     const drawCount = useGameStore(s => s.drawCount);
     const stats = useGameStore(s => s.stats);
+    const status = useGameStore(s => s.status);
+    const winnable = useGameStore(s => s.winnable);
+    const winnableOnly = useGameStore(s => s.winnableOnly);
     const canFinish = useGameStore(s => s.canAutoComplete());
 
     const { felt, setFelt, settingsOpen, toggleSettings } = useUiStore();
@@ -119,7 +122,12 @@ const Toolbar: React.FC<ToolbarProps> = ({ autoRunning, onAutoComplete, dragging
                     </button>
                 )}
 
-                <button className="btn btn-new" onClick={act(newGame)} title="Deal a new hand">
+                <button
+                    className="btn btn-new"
+                    onClick={act(newGame)}
+                    disabled={status === 'shuffling'}
+                    title="Deal a new hand"
+                >
                     <Plus size={20} aria-hidden />
                     <span>New</span>
                 </button>
@@ -178,6 +186,30 @@ const Toolbar: React.FC<ToolbarProps> = ({ autoRunning, onAutoComplete, dragging
                                     {drawCount === count && <Check size={16} className="row-check" aria-hidden />}
                                 </button>
                             ))}
+                        </section>
+
+                        <section>
+                            <h3>Hands</h3>
+                            {([true, false] as const).map(only => (
+                                <button
+                                    key={String(only)}
+                                    className="row-btn"
+                                    onClick={() => {
+                                        sfx.playClick();
+                                        useGameStore.getState().setWinnableOnly(only);
+                                    }}
+                                >
+                                    <span>{only ? 'Only hands that can be won' : 'Any shuffle, like a real deck'}</span>
+                                    {winnableOnly === only && <Check size={16} className="row-check" aria-hidden />}
+                                </button>
+                            ))}
+                            <p className="row-note">
+                                {winnable
+                                    ? 'This hand can be won.'
+                                    : winnableOnly
+                                      ? 'From the next hand on.'
+                                      : 'Some shuffles cannot be won, however well you play.'}
+                            </p>
                         </section>
 
                         <section>

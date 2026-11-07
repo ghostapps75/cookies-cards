@@ -16,6 +16,8 @@ interface PileSlotProps {
     /** The move the hint is pointing at. */
     hinted?: boolean;
     stockEmpty?: boolean;
+    /** The dealer is still finding a hand; the deck will appear here. */
+    shuffling?: boolean;
     onPointerDown?: (event: React.PointerEvent) => void;
 }
 
@@ -30,6 +32,7 @@ const PileSlot: React.FC<PileSlotProps> = ({
     active,
     hinted,
     stockEmpty,
+    shuffling,
     onPointerDown,
 }) => {
     const border = active
@@ -85,6 +88,8 @@ const PileSlot: React.FC<PileSlotProps> = ({
                     ))}
                 </div>
             )}
+
+            {kind === 'stock' && shuffling && <span className="slot-label">shuffling</span>}
 
             {kind === 'stock' && stockEmpty && (
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.34)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

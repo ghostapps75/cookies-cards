@@ -1,27 +1,16 @@
 import { create } from 'zustand';
-import type { Card, PileId } from '../types';
-import {
-    canStackOnFoundation,
-    canStackOnTableau,
-    createDeck,
-    isMovableRun,
-    shuffleDeck,
-} from '../utils/gameLogic';
+import type { Board, Card, DrawCount, PileId } from '../types';
+import { canStackOnFoundation, canStackOnTableau, isMovableRun } from '../utils/gameLogic';
+import { requestDeal, warmUp } from '../utils/dealer';
 import * as sfx from '../utils/sound';
 
 const SAVE_KEY = 'cookie-solitaire-save';
 const STATS_KEY = 'cookie-solitaire-stats';
+const WINNABLE_KEY = 'cookie-solitaire-winnable';
 const MAX_HISTORY = 400;
 
-export type DrawCount = 1 | 3;
-export type GameStatus = 'dealing' | 'playing' | 'won';
-
-interface Board {
-    stock: Card[];
-    waste: Card[];
-    foundations: Card[][];
-    tableau: Card[][];
-}
+/** 'shuffling' is the moment between asking for a hand and getting one. */
+export type GameStatus = 'shuffling' | 'dealing' | 'playing' | 'won';
 
 interface Snapshot extends Board {
     score: number;
@@ -55,6 +44,12 @@ interface GameState extends Board {
     seconds: number;
     recycles: number;
     drawCount: DrawCount;
+    /** The number this hand was dealt from; the same seed lays the same hand. */
+    seed: number;
+    /** The solver has seen this hand through to the end. */
+    winnable: boolean;
+    /** Only put hands on the table that the solver can win. */
+    winnableOnly: boolean;
     /**
      * How many cards on top of the waste came from the most recent turn, and so
      * are the ones fanned out. Tracked rather than assumed to be the last three:
@@ -76,6 +71,8 @@ interface GameState extends Board {
     stats: Stats;
 
     newGame: (drawCount?: DrawCount) => void;
+    /** Ask the dealer for a hand, and lay it when it comes. */
+    deal: () => void;
     finishDeal: () => void;
     tick: () => void;
     draw: () => void;
@@ -90,6 +87,7 @@ interface GameState extends Board {
     clearHint: () => void;
     clearNotice: () => void;
     setDrawCount: (drawCount: DrawCount) => void;
+    setWinnableOnly: (on: boolean) => void;
 }
 
 const emptyBoard = (): Board => ({
@@ -117,17 +115,12 @@ const saveStats = (stats: Stats): void => {
     }
 };
 
-const deal = (): Board => {
-    const deck = shuffleDeck(createDeck());
-    const board = emptyBoard();
-
-    for (let col = 0; col < 7; col++) {
-        const cards = deck.splice(0, col + 1);
-        cards[cards.length - 1].isFaceUp = true;
-        board.tableau[col] = cards;
+const loadWinnableOnly = (): boolean => {
+    try {
+        return localStorage.getItem(WINNABLE_KEY) !== 'off';
+    } catch {
+        return true;
     }
-    board.stock = deck;
-    return board;
 };
 
 /**
@@ -200,15 +193,21 @@ try {
     /* ignore */
 }
 
+/** Which request for a hand is the current one; older ones are ignored. */
+let dealToken = 0;
+
 export const useGameStore = create<GameState>((set, get) => ({
-    ...deal(),
+    ...emptyBoard(),
     gameId: 1,
-    status: 'dealing',
+    status: 'shuffling',
     score: 0,
     moves: 0,
     seconds: 0,
     recycles: 0,
     drawCount: 3,
+    seed: 0,
+    winnable: false,
+    winnableOnly: loadWinnableOnly(),
     wasteFan: 0,
     lastMoved: [],
     history: [],
@@ -218,14 +217,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     stats: loadStats(),
 
     newGame: drawCount => {
-        const board = deal();
-        const stats = { ...get().stats, played: get().stats.played + 1 };
+        const s = get();
+        const stats = { ...s.stats, played: s.stats.played + 1 };
         saveStats(stats);
         sfx.playShuffle();
-        set(s => ({
-            ...board,
-            gameId: s.gameId + 1,
-            status: 'dealing',
+        // The table clears at once; the cards arrive when the dealer has a hand.
+        set({
+            ...emptyBoard(),
+            status: 'shuffling',
             score: 0,
             moves: 0,
             seconds: 0,
@@ -238,7 +237,25 @@ export const useGameStore = create<GameState>((set, get) => ({
             hint: null,
             started: false,
             stats,
-        }));
+            winnable: false,
+        });
+        get().deal();
+    },
+
+    deal: () => {
+        // Only the latest request lays cards. A hand asked for and then
+        // superseded - New pressed twice, say - is dropped when it arrives.
+        const token = ++dealToken;
+        void requestDeal(get().winnableOnly).then(hand => {
+            if (token !== dealToken) return;
+            set(s => ({
+                ...hand.board,
+                gameId: s.gameId + 1,
+                status: 'dealing',
+                seed: hand.seed,
+                winnable: hand.winnable,
+            }));
+        });
     },
 
     finishDeal: () => {
@@ -254,6 +271,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     setDrawCount: drawCount => {
         if (get().drawCount === drawCount) return;
         get().newGame(drawCount);
+    },
+
+    setWinnableOnly: on => {
+        try {
+            localStorage.setItem(WINNABLE_KEY, on ? 'on' : 'off');
+        } catch {
+            /* ignore */
+        }
+        set({ winnableOnly: on });
+        // Start cooking now, so the next hand is ready by the time it is wanted.
+        if (on) warmUp();
     },
 
     canUndo: () => get().history.length > 0,
@@ -476,6 +504,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (get().notice) set({ notice: null });
     },
 }));
+
+// The first hand of the visit.
+useGameStore.getState().deal();
 
 if (import.meta.env.DEV) {
     (window as unknown as { game?: unknown }).game = useGameStore;

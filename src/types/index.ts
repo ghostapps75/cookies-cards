@@ -13,6 +13,17 @@ export type PileType = 'stock' | 'waste' | 'foundation' | 'tableau';
 /** e.g. 'stock' | 'waste' | 'foundation-0' | 'tableau-3' */
 export type PileId = string;
 
+/** The four kinds of pile, with nothing else about the game attached. */
+export interface Board {
+    stock: Card[];
+    waste: Card[];
+    foundations: Card[][];
+    tableau: Card[][];
+}
+
+/** How many cards a turn of the deck lays on the waste. */
+export type DrawCount = 1 | 3;
+
 /** Where a card should be drawn on the logical board. */
 export interface CardPlacement {
     x: number;
