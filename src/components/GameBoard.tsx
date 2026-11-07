@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Card as CardType, PileId } from '../types';
 import { useGameStore } from '../store/gameStore';
+import { useUiStore } from '../store/uiStore';
 import { canStackOnFoundation, canStackOnTableau, isMovableRun } from '../utils/gameLogic';
 import {
     CARD_H,
@@ -88,7 +89,8 @@ const GameBoard: React.FC = () => {
         };
     }, []);
 
-    const metrics = useMemo(() => metricsFor(viewport.w, viewport.h), [viewport]);
+    const drawSide = useUiStore(s => s.drawSide);
+    const metrics = useMemo(() => metricsFor(viewport.w, viewport.h, drawSide), [viewport, drawSide]);
     const scale = Math.min(viewport.w / metrics.boardW, viewport.h / metrics.boardH);
 
     const board = useMemo(

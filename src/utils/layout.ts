@@ -1,4 +1,4 @@
-import type { Card, CardPlacement, PileId } from '../types';
+import type { Card, CardPlacement, DrawSide, PileId } from '../types';
 
 /**
  * The table is laid out in its own coordinate space and then scaled to fit the
@@ -52,10 +52,15 @@ export interface Metrics {
     boardH: number;
     tableauRoom: number;
     wasteStep: number;
+    drawSide: DrawSide;
     origins: Record<PileId, { x: number; y: number }>;
 }
 
-export const metricsFor = (containerW: number, containerH: number): Metrics => {
+export const metricsFor = (
+    containerW: number,
+    containerH: number,
+    drawSide: DrawSide = 'right',
+): Metrics => {
     const aspect = containerW > 0 && containerH > 0 ? containerW / containerH : 16 / 9;
 
     // Deep table on squarish screens, shallow one on letterbox screens.
@@ -77,11 +82,17 @@ export const metricsFor = (containerW: number, containerH: number): Metrics => {
     const marginX = Math.round((boardW - (7 * CARD_W + 6 * gap)) / 2);
 
     const columnX = (col: number) => marginX + col * colStep;
+
+    // The deck and the pile beside it take two columns at one end of the top
+    // row, the foundations the four at the other, with a spare column between
+    // them for the turned-over cards to fan into. Cookie wanted the deck under
+    // her right hand, so that is the default; the setting mirrors the row.
+    const right = drawSide === 'right';
     const origins: Record<PileId, { x: number; y: number }> = {
-        stock: { x: columnX(0), y: TOP_Y },
-        waste: { x: columnX(1), y: TOP_Y },
+        stock: { x: columnX(right ? 6 : 0), y: TOP_Y },
+        waste: { x: columnX(right ? 5 : 1), y: TOP_Y },
     };
-    for (let f = 0; f < 4; f++) origins[`foundation-${f}`] = { x: columnX(3 + f), y: TOP_Y };
+    for (let f = 0; f < 4; f++) origins[`foundation-${f}`] = { x: columnX(right ? f : 3 + f), y: TOP_Y };
     for (let t = 0; t < 7; t++) origins[`tableau-${t}`] = { x: columnX(t), y: TABLEAU_Y };
 
     return {
@@ -89,6 +100,7 @@ export const metricsFor = (containerW: number, containerH: number): Metrics => {
         boardH,
         tableauRoom: boardH - TABLEAU_Y - BOTTOM_PAD,
         wasteStep: Math.round(Math.min(38, gap + 8)),
+        drawSide,
         origins,
     };
 };
@@ -150,11 +162,17 @@ export const computePlacements = (
     });
 
     // The cards turned over this go fan out; everything under them is squared
-    // up in a single pile, exactly where it would sit on a real table.
+    // up in a single pile, exactly where it would sit on a real table. The fan
+    // always runs left to right in the order the cards came off the deck, so
+    // every rank corner stays in view: with the deck on the left it grows
+    // rightward from the pile, and with the deck on the right the newest card
+    // lands on the pile and nudges the older ones out to the left.
     const fanStart = board.waste.length - Math.min(board.wasteFan, board.waste.length);
+    const newest = board.waste.length - 1;
     board.waste.forEach((card, i) => {
+        const steps = i < fanStart ? 0 : metrics.drawSide === 'right' ? i - newest : i - fanStart;
         map.set(card.id, {
-            x: origins.waste.x + (i >= fanStart ? (i - fanStart) * metrics.wasteStep : 0),
+            x: origins.waste.x + steps * metrics.wasteStep,
             y: origins.waste.y,
             z: i,
             pileId: 'waste',

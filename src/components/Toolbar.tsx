@@ -44,7 +44,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ autoRunning, onAutoComplete, dragging
     const thinking = useGameStore(s => s.thinking);
     const canFinish = useGameStore(s => s.canAutoComplete());
 
-    const { felt, setFelt, settingsOpen, toggleSettings } = useUiStore();
+    const { felt, setFelt, drawSide, setDrawSide, settingsOpen, toggleSettings } = useUiStore();
     const [soundOn, setSoundOn] = React.useState(sfx.isSoundEnabled());
 
     // Asked in-app rather than with window.confirm: embedded browsers often
@@ -191,6 +191,23 @@ const Toolbar: React.FC<ToolbarProps> = ({ autoRunning, onAutoComplete, dragging
                                 >
                                     <span>{count === 1 ? 'Draw one (easier)' : 'Draw three (classic)'}</span>
                                     {drawCount === count && <Check size={16} className="row-check" aria-hidden />}
+                                </button>
+                            ))}
+                        </section>
+
+                        <section>
+                            <h3>Draw pile</h3>
+                            {(['right', 'left'] as const).map(side => (
+                                <button
+                                    key={side}
+                                    className="row-btn"
+                                    onClick={() => {
+                                        sfx.playClick();
+                                        setDrawSide(side);
+                                    }}
+                                >
+                                    <span>{side === 'right' ? 'On the right' : 'On the left'}</span>
+                                    {drawSide === side && <Check size={16} className="row-check" aria-hidden />}
                                 </button>
                             ))}
                         </section>

@@ -34,5 +34,7 @@ export interface CardPlacement {
 }
 
 export type FeltName = 'green' | 'cookie' | 'plum' | 'midnight';
+/** Which side of the table the deck sits on. Cookie is right-handed: the deck on the right. */
+export type DrawSide = 'left' | 'right';
 
 export { };
