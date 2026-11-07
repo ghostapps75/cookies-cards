@@ -236,12 +236,20 @@ export const useCanastaStore = create<CanastaStore>((set, get) => {
             const next = verdict.value;
             const drewNow = move.type === 'draw' || move.type === 'take';
             const endedTurn = next.phase === 'over' || next.turn !== 'cookie';
+            const moreReds = next.players.cookie.redThrees.length > state.hand.players.cookie.redThrees.length;
             set({
                 ...after(next, 'cookie', move),
                 selected: [],
                 notice: null,
                 undo: endedTurn ? null : drewNow ? next : state.undo,
             });
+            if (moreReds) {
+                get().say(
+                    move.type === 'draw'
+                        ? 'A red three! It goes on the table, worth 100, and you get another card.'
+                        : 'There was a red three in the pile. It goes on the table, worth 100.',
+                );
+            }
             return verdict;
         },
 

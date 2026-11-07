@@ -73,6 +73,10 @@ export const statusFor = (options: {
     const player = hand.players.cookie;
     const minimum = minimumFor(hand, 'cookie');
     const firstMeldHint = player.melds.length === 0 ? `Your first meld needs ${minimum} points.` : undefined;
+    const meldHint =
+        player.melds.length === 0
+            ? `A meld is three or more of a kind. Your first needs ${minimum} points.`
+            : 'Tap cards to choose them. Tap one of your melds to add to it.';
 
     if (hand.phase === 'over') return { line: 'The hand is over.' };
     if (hand.turn === 'computer') return { line: 'Computer is thinking…', hint: lastAction ?? undefined };
@@ -86,12 +90,13 @@ export const statusFor = (options: {
     }
 
     if (selected.length === 0) {
-        if (canGoOut) return { line: 'You can go out now, or keep playing', hint: 'Or meld, lay off and discard as usual.' };
+        if (canGoOut) return { line: 'You can go out now, or keep playing', hint: 'Going out ends the hand, with a bonus.' };
         return hasMeldToMake(hand, player)
-            ? { line: 'Meld or lay off, then discard', hint: firstMeldHint ?? 'Tap cards to choose them.' }
+            ? { line: 'Meld or lay off, then discard', hint: meldHint }
             : { line: 'Tap a card, then Discard', hint: firstMeldHint };
     }
     if (selected.length === 1) {
+        if (player.hand.length === 1 && canGoOut) return { line: 'Press Discard to go out' };
         return canLayOff
             ? { line: 'Press Discard, or tap one of your melds to add it' }
             : { line: 'Press Discard to throw this card away', hint: firstMeldHint };

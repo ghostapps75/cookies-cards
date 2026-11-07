@@ -128,8 +128,11 @@ const layOffNaturals = (table: HandState, seat: Seat): MeldGroup[] | null => {
     for (const meld of melds) {
         const cards = naturals.get(meld.rank);
         if (!cards) continue;
-        const groups = [{ rank: meld.rank, cardIds: ids(cards) }];
-        if (legal(table, seat, groups)) return groups;
+        // All of them if it can, or as many as still leave a card to discard.
+        for (let count = cards.length; count > 0; count--) {
+            const groups = [{ rank: meld.rank, cardIds: ids(cards.slice(0, count)) }];
+            if (legal(table, seat, groups)) return groups;
+        }
     }
     return null;
 };

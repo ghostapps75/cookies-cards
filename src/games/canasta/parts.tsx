@@ -144,7 +144,6 @@ export const Stock: React.FC<{ cards: PlayingCard[]; live: boolean; onTap: () =>
             </div>
         ))}
         <span className="cn-badge">{cards.length}</span>
-        <span className="cn-slot-label">Stock</span>
     </div>
 );
 
@@ -184,13 +183,14 @@ export const DiscardPile: React.FC<{
             ))}
             {cards.length > 0 && <span className="cn-badge">{cards.length}</span>}
             {frozen ? (
-                <span className="cn-tag is-frozen">
+                <span className="cn-tag is-frozen" title="To take a frozen pile you need two matching cards, not wild ones.">
                     <Snowflake size={11} aria-hidden /> frozen
                 </span>
             ) : blocked ? (
-                <span className="cn-tag">blocked</span>
+                <span className="cn-tag" title="A black three blocks the pile for this turn.">
+                    blocked
+                </span>
             ) : null}
-            <span className="cn-slot-label">Pile</span>
         </div>
     );
 };

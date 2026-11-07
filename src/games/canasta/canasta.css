@@ -176,7 +176,10 @@
 
 /* ---------------------------------------------------------------- the middle */
 
+/* A card on its way to the pile or to her melds passes over the hand, not under it. */
 .cn-middle {
+    position: relative;
+    z-index: 3;
     gap: calc(var(--u) * 3.4);
 }
 
@@ -211,18 +214,6 @@
     justify-content: center;
     font-size: calc(var(--u) * 2);
     color: rgba(255, 255, 255, 0.42);
-}
-
-.cn-slot-label {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: calc(var(--u) * -0.4);
-    font-size: calc(var(--u) * 1.6);
-    letter-spacing: 0.06em;
-    text-align: center;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0);
 }
 
 .cn-pile-card {
@@ -305,6 +296,8 @@
 
 .cn-mine {
     --card-w: calc(var(--u) * 11);
+    position: relative;
+    z-index: 2;
     padding-left: calc(var(--u) * 0.4);
 }
 

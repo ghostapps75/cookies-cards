@@ -21,13 +21,15 @@ import {
     type MeldRank,
     type TakePlan,
 } from './rules';
-import { useCanastaStore } from './store';
+import { useCanastaStore, type HandResult } from './store';
 import { sortHand, statusFor, tryMeld } from './view';
 import './canasta.css';
 
 /** Pause between the computer's steps, long enough to follow what it is doing. */
 const STEP_MS = 950;
 const NOTICE_MS = 3800;
+/** The score panel waits a moment, so that the hand's last move can be seen landing. */
+const PANEL_DELAY_MS = 1000;
 
 interface Asking {
     text: string;
@@ -83,6 +85,7 @@ const CanastaGame: React.FC = () => {
     const setCanastasNeeded = useCanastaStore(s => s.setCanastasNeeded);
 
     const [asking, setAsking] = useState<Asking | null>(null);
+    const [panelFor, setPanelFor] = useState<HandResult | null>(null);
 
     const me = hand.players.cookie;
     const them = hand.players.computer;
@@ -99,6 +102,12 @@ const CanastaGame: React.FC = () => {
         const timer = window.setTimeout(computerStep, STEP_MS);
         return () => window.clearTimeout(timer);
     }, [hand, computerStep]);
+
+    useEffect(() => {
+        if (!result) return;
+        const timer = window.setTimeout(() => setPanelFor(result), PANEL_DELAY_MS);
+        return () => window.clearTimeout(timer);
+    }, [result]);
 
     useEffect(() => {
         if (!notice) return;
@@ -420,6 +429,7 @@ const CanastaGame: React.FC = () => {
                 )}
 
             {result &&
+                panelFor === result &&
                 createPortal(
                     <HandPanel
                         result={result}

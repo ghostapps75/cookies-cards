@@ -271,6 +271,12 @@ describe('how it plays', () => {
         expect(move.type === 'meld' && move.groups[0].rank).toBe('queen');
     });
 
+    it('lays off only what still leaves it a card to discard', () => {
+        const state = position({ me: { hand: cards('Q Q 6'), melds: down() } });
+        const move = choose(state);
+        expect(move.type === 'meld' && move.groups[0].cardIds).toHaveLength(1);
+    });
+
     it('spends a wild to reach seven', () => {
         const state = position({ me: { hand: cards('2 6 7'), melds: [meld('queen', 'Q Q Q Q Q Q')] } });
         const move = choose(state);
