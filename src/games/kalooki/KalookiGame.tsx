@@ -17,6 +17,7 @@ import {
 import GameShell, { Confirm, Notice, Stat } from '../shared/GameShell';
 import PlayingCard from '../shared/PlayingCard';
 import { cardName, isJoker, turned, type PlayingCard as Card } from '../shared/cards';
+import { unlockAudio } from '../../utils/sound';
 import { fitMeldCard, sortHand } from './layout';
 import {
     DEFAULT_HAND_SIZE,
@@ -259,7 +260,7 @@ const HandOver: React.FC = () => {
             ? 'A kalooki! You went out in one go, so the computer pays double.'
             : 'A kalooki! The computer went out in one go, so you pay double.'
         : winner
-          ? `Someone reached ${MATCH_LIMIT}, and the lower score wins.`
+          ? `${totals.computer >= totals.cookie ? 'The computer' : 'You'} reached ${MATCH_LIMIT}, so the lower score wins.`
           : `Whoever is left holding cards pays for them. ${MATCH_LIMIT} ends the match.`;
 
     return (
@@ -435,7 +436,7 @@ const KalookiTable: React.FC = () => {
     const actions = (
         <>
             <button
-                className="btn btn-new"
+                className="btn btn-new kal-new"
                 title="Deal a new hand"
                 onClick={() => {
                     if (hand.phase === 'over') throwInHand();
@@ -536,7 +537,8 @@ const KalookiTable: React.FC = () => {
 
     return (
         <GameShell title="Kalooki" stats={statsPills} actions={actions} settings={settings}>
-            <div className="kal-table">
+            {/* A resumed game has had no tap yet to let the sounds play. */}
+            <div className="kal-table" onPointerDownCapture={() => void unlockAudio()}>
                 <ComputerHand cards={hand.hands.computer} reveal={hand.phase === 'over'} />
 
                 <div className="kal-piles">
