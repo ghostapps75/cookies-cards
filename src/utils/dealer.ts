@@ -1,5 +1,5 @@
 import type { Board } from '../types';
-import type { FindReply, FindRequest } from '../solver/solver.worker';
+import { findWinnableSeed } from '../solver/client';
 import { dealFromSeed, randomSeed } from './gameLogic';
 
 /**
@@ -19,54 +19,8 @@ export interface Deal {
 
 /** Seeds tried per request before the solver admits defeat. */
 const ATTEMPTS = 8;
-/** Search budget per seed. Winnable hands usually fall in well under this. */
-const MAX_MS = 1500;
-const MAX_NODES = 150_000;
 /** How long the player waits on an empty table before we deal whatever comes. */
 const PATIENCE_MS = 5000;
-
-let worker: Worker | null | undefined;
-let nextId = 1;
-const waiting = new Map<number, (seed: number | null) => void>();
-
-const getWorker = (): Worker | null => {
-    if (worker !== undefined) return worker;
-    try {
-        const w = new Worker(new URL('../solver/solver.worker.ts', import.meta.url), { type: 'module' });
-        w.onmessage = (event: MessageEvent<FindReply>) => {
-            const resolve = waiting.get(event.data.id);
-            if (resolve) {
-                waiting.delete(event.data.id);
-                resolve(event.data.seed);
-            }
-        };
-        w.onerror = () => {
-            // Whatever went wrong, every open request gets a plain shuffle and
-            // nobody asks this worker again.
-            w.terminate();
-            worker = null;
-            waiting.forEach(resolve => resolve(null));
-            waiting.clear();
-        };
-        worker = w;
-    } catch {
-        worker = null;
-    }
-    return worker;
-};
-
-const cook = (): Promise<number | null> =>
-    new Promise(resolve => {
-        const w = getWorker();
-        if (!w) {
-            resolve(null);
-            return;
-        }
-        const id = nextId++;
-        waiting.set(id, resolve);
-        const request: FindRequest = { id, attempts: ATTEMPTS, maxMs: MAX_MS, maxNodes: MAX_NODES };
-        w.postMessage(request);
-    });
 
 /** One winnable seed kept warm, and at most one cooking. */
 let reserve: number | undefined;
@@ -75,7 +29,7 @@ let inFlight: Promise<void> | null = null;
 const cookInto = (): Promise<void> => {
     if (reserve !== undefined) return Promise.resolve();
     if (!inFlight) {
-        inFlight = cook().then(seed => {
+        inFlight = findWinnableSeed(ATTEMPTS).then(seed => {
             inFlight = null;
             if (seed !== null && reserve === undefined) reserve = seed;
         });

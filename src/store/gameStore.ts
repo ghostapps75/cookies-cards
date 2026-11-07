@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { Board, Card, DrawCount, PileId } from '../types';
 import { canStackOnFoundation, canStackOnTableau, isMovableRun } from '../utils/gameLogic';
 import { requestDeal, warmUp } from '../utils/dealer';
+import { solveBoard } from '../solver/client';
+import { toGameMove, type SolverMove } from '../solver/klondike';
 import * as sfx from '../utils/sound';
 
 const SAVE_KEY = 'cookie-solitaire-save';
@@ -65,6 +67,8 @@ interface GameState extends Board {
     lastMoved: string[];
     history: Snapshot[];
     hint: Hint | null;
+    /** The solver is working out a hint; the button waits for it. */
+    thinking: boolean;
     /** Something to tell the player in words, when a glow will not do. */
     notice: string | null;
     started: boolean;
@@ -196,6 +200,19 @@ try {
 /** Which request for a hand is the current one; older ones are ignored. */
 let dealToken = 0;
 
+/**
+ * Which question to the solver is the current one. Every change to the table
+ * asks a new number, so a hint that was worked out for a table that is no
+ * longer there is dropped when it arrives.
+ */
+let hintToken = 0;
+
+/** Whatever the hint was pointing at is gone; so is any hint still being worked out. */
+const dropHint = (): Pick<GameState, 'hint' | 'thinking'> => {
+    hintToken += 1;
+    return { hint: null, thinking: false };
+};
+
 export const useGameStore = create<GameState>((set, get) => ({
     ...emptyBoard(),
     gameId: 1,
@@ -212,6 +229,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     lastMoved: [],
     history: [],
     hint: null,
+    thinking: false,
     notice: null,
     started: false,
     stats: loadStats(),
@@ -234,7 +252,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             lastMoved: [],
             history: [],
             notice: null,
-            hint: null,
+            ...dropHint(),
             started: false,
             stats,
             winnable: false,
@@ -254,6 +272,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                 status: 'dealing',
                 seed: hand.seed,
                 winnable: hand.winnable,
+                ...dropHint(),
             }));
         });
     },
@@ -307,7 +326,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                 wasteFan: 0,
                 lastMoved: travellers(s, board),
                 moves: s.moves + 1,
-                hint: null,
+                ...dropHint(),
                 started: true,
             });
         } else {
@@ -321,7 +340,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                 moves: s.moves + 1,
                 wasteFan: drawn.length,
                 lastMoved: travellers(s, board),
-                hint: null,
+                ...dropHint(),
                 started: true,
             });
         }
@@ -345,7 +364,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             lastMoved: travellers(s, previous),
             history: s.history.slice(0, -1),
             status: 'playing',
-            hint: null,
+            ...dropHint(),
         });
     },
 
@@ -405,7 +424,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             // back down for a card that was already buried.
             wasteFan: from === 'waste' ? Math.max(0, s.wasteFan - 1) : s.wasteFan,
             lastMoved: travellers(s, board),
-            hint: null,
+            ...dropHint(),
             started: true,
             status: won ? 'won' : 'playing',
         });
@@ -448,7 +467,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             score: s.score + 5,
             moves: s.moves + 1,
             lastMoved: [],
-            hint: null,
+            ...dropHint(),
             started: true,
         });
         return true;
@@ -481,19 +500,46 @@ export const useGameStore = create<GameState>((set, get) => ({
         return 'done';
     },
 
+    /**
+     * Point at the next move on a line the solver can see through to the end.
+     * The solver runs in a worker, so the answer comes back a moment later;
+     * if the table has changed by then, it is quietly dropped.
+     */
     showHint: () => {
         const s = get();
-        if (s.status !== 'playing') return;
-        const hint = findHint(s);
-        if (hint) {
-            set({ hint, notice: null });
-            sfx.playHint();
-            return;
-        }
-        // Nothing worth doing, and the deck is spent. Say so plainly rather than
-        // pointing at a move that only shuffles the table around.
-        set({ hint: null, notice: 'No moves left that would help. Time for a new hand.' });
-        sfx.playInvalid();
+        if (s.status !== 'playing' || s.thinking) return;
+
+        const token = ++hintToken;
+        set({ thinking: true });
+
+        void solveBoard(cloneBoard(s), s.drawCount).then(reply => {
+            if (token !== hintToken) return;
+            const now = get();
+            set({ thinking: false });
+            if (now.status !== 'playing') return;
+
+            if (reply?.status === 'lost') {
+                set({
+                    hint: null,
+                    notice: "This hand can't be won from here. Undo a few moves, or deal a new one.",
+                });
+                sfx.playInvalid();
+                return;
+            }
+
+            // The solver's move when it found a line; otherwise - it ran out of
+            // time, or is not available at all - the best-looking move in sight.
+            const hint = (reply?.status === 'won' && reply.move && hintFor(now, reply.move)) || findHint(now);
+            if (hint) {
+                set({ hint, notice: null });
+                sfx.playHint();
+                return;
+            }
+            // Nothing worth doing, and the deck is spent. Say so plainly rather
+            // than pointing at a move that only shuffles the table around.
+            set({ hint: null, notice: 'No moves left that would help. Time for a new hand.' });
+            sfx.playInvalid();
+        });
     },
 
     clearHint: () => {
@@ -539,11 +585,25 @@ const recordWin = (s: GameState, set: (partial: Partial<GameState>) => void): vo
     sfx.playWin();
 };
 
+/** The solver's move as a glow on the table: the run that moves, and where it goes. */
+const hintFor = (board: Board, move: SolverMove): Hint | null => {
+    try {
+        const gameMove = toGameMove(board, move);
+        if (gameMove.kind === 'draw') return { cardIds: [], toPileId: 'stock', deckOnly: true };
+        const pile = readPile(board, gameMove.from);
+        const index = pile.findIndex(c => c.id === gameMove.cardId);
+        if (index === -1) return null;
+        return { cardIds: pile.slice(index).map(c => c.id), toPileId: gameMove.to };
+    } catch {
+        return null;
+    }
+};
+
 /**
- * Suggest a move, favouring the ones that actually open the game up:
- * cards going home, then moves that uncover a face-down card or free a column.
- */
-/**
+ * Suggest a move by looking one step ahead, for when the solver cannot help.
+ * Favours the moves that actually open the game up: cards going home, then
+ * moves that uncover a face-down card or free a column.
+ *
  * A move earns a hint only if it gets the player somewhere. Anything else is
  * just rearranging the table, and offering it is worse than offering nothing:
  * it reads as "here is your way out" when it is not one.

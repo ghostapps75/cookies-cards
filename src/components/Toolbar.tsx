@@ -40,6 +40,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ autoRunning, onAutoComplete, dragging
     const status = useGameStore(s => s.status);
     const winnable = useGameStore(s => s.winnable);
     const winnableOnly = useGameStore(s => s.winnableOnly);
+    const thinking = useGameStore(s => s.thinking);
     const canFinish = useGameStore(s => s.canAutoComplete());
 
     const { felt, setFelt, settingsOpen, toggleSettings } = useUiStore();
@@ -109,10 +110,12 @@ const Toolbar: React.FC<ToolbarProps> = ({ autoRunning, onAutoComplete, dragging
                 <button
                     className="btn"
                     onClick={act(() => useGameStore.getState().showHint())}
+                    disabled={thinking}
+                    aria-busy={thinking}
                     title="Show me a move (H)"
                 >
                     <Lightbulb size={20} aria-hidden />
-                    <span>Hint</span>
+                    <span>{thinking ? 'Thinking…' : 'Hint'}</span>
                 </button>
 
                 {(canFinish || autoRunning) && (
