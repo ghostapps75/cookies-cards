@@ -83,8 +83,11 @@ const PlayingCardView: React.FC<PlayingCardProps> = ({
                 })
             }
         >
+            {/* initial={false}: a card that arrives face down must mount face down, or every
+                deal flashes the backs' faces for a frame as they turn over. */}
             <motion.div
                 className="pcard-inner"
+                initial={false}
                 animate={{ rotateY: card.isFaceUp ? 0 : 180, y: selected ? -14 : 0 }}
                 transition={FLIP}
             >
