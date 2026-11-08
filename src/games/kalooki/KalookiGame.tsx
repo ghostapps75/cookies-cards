@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { PresenceContext } from 'framer-motion';
 import {
     ArrowDownToLine,
     ArrowDownUp,
@@ -43,18 +42,6 @@ import './kalooki.css';
 
 const STOCK_LAYERS = 3;
 const NOTICE_MS = 4200;
-
-/**
- * A new PlayingCard springs from face up to its real side as it mounts, which
- * would flash the next stock card and the computer's hand at Cookie. This tells
- * every card under it to start on the side it is on. Flights are not affected.
- */
-const START_SETTLED = {
-    id: 'kalooki-table',
-    isPresent: true,
-    initial: false as const,
-    register: () => () => {},
-};
 
 /** The computer's cards, face down, until the hand is over and they are shown. */
 const ComputerHand: React.FC<{ cards: Card[]; reveal: boolean }> = ({ cards, reveal }) => {
@@ -631,10 +618,4 @@ const KalookiTable: React.FC = () => {
     );
 };
 
-const KalookiGame: React.FC = () => (
-    <PresenceContext.Provider value={START_SETTLED}>
-        <KalookiTable />
-    </PresenceContext.Provider>
-);
-
-export default KalookiGame;
+export default KalookiTable;

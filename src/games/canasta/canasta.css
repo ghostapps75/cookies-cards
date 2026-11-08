@@ -156,14 +156,6 @@
     width: min(26cqw, calc(var(--card-w) * 3.2));
 }
 
-/* The shared card has no resting state on mount: it starts face up and flips,
-   which would flash the computer's hand and the next stock card at every deal
-   and reload. These cards are never seen face up here, so they stay turned. */
-.cn-fan .pcard-inner,
-.cn-stock .pcard-inner {
-    transform: rotateY(180deg) !important;
-}
-
 .cn-fan-slot {
     flex: 0 1 calc(var(--card-w) * 0.16);
     min-width: 0;
